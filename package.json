@@ -43,6 +43,8 @@
     "release": "changeset publish"
   },
   "dependencies": {
+    "@iconify-json/lucide": "1.2.130",
+    "@iconify-json/simple-icons": "1.2.95",
     "@iconify-json/tabler": "1.2.38",
     "@node-rs/argon2": "2.2.1",
     "@nuxt/ui": "4.11.1",

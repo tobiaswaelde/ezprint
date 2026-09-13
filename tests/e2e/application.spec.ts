@@ -3,6 +3,14 @@ import { expect, test } from '@playwright/test';
 
 test('setup, navigation, persistence, accessibility, and responsive shell', async ({ page }) => {
   test.setTimeout(90_000);
+  const iconCdnRequests: string[] = [];
+  await page.route(
+    /https:\/\/(?:api\.iconify\.design|api\.simplesvg\.com|api\.unisvg\.com|cdn\.jsdelivr\.net)\/.*/,
+    async (route) => {
+      iconCdnRequests.push(route.request().url());
+      await route.abort();
+    },
+  );
   await page.route('**/api/version-latest', (route) => route.fulfill({ json: { latest: '999.0.0' } }));
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Ersteinrichtung' })).toBeVisible();
@@ -50,6 +58,11 @@ test('setup, navigation, persistence, accessibility, and responsive shell', asyn
   const collapseButton = page.getByRole('button', { name: 'Navigation einklappen' });
   const globalSearchButton = page.getByRole('button', { name: 'Globale Suche öffnen' });
   await expect(collapseButton).toHaveCount(1);
+  const lucideIcon = collapseButton.locator('.iconify[class*="i-lucide:"]');
+  await expect(lucideIcon).toBeVisible();
+  expect(await lucideIcon.evaluate((element) => getComputedStyle(element).maskImage)).toContain(
+    'data:image/svg+xml',
+  );
   const [collapseBox, searchBox] = await Promise.all([
     collapseButton.boundingBox(),
     globalSearchButton.boundingBox(),
@@ -65,6 +78,11 @@ test('setup, navigation, persistence, accessibility, and responsive shell', asyn
   await expect(footerItems).toHaveCount(3);
   await expect(footerItems.nth(0)).toContainText('GitHub');
   await expect(footerItems.nth(1)).toContainText('Dokumentation');
+  const simpleIcon = footerItems.nth(0).locator('.iconify[class*="i-simple-icons:"]');
+  await expect(simpleIcon).toBeVisible();
+  expect(await simpleIcon.evaluate((element) => getComputedStyle(element).maskImage)).toContain(
+    'data:image/svg+xml',
+  );
   const footerBox = (await footer.boundingBox())!;
   const footerBoxes = await footerItems.evaluateAll((items) =>
     items.map((item) => {
@@ -116,7 +134,13 @@ test('setup, navigation, persistence, accessibility, and responsive shell', asyn
   await expect(breadcrumbItems).toHaveCount(2);
   await expect(breadcrumbItems.locator('[data-slot="linkLeadingIcon"]')).toHaveCount(2);
   await expect(printsToolbar.getByRole('textbox')).toBeVisible();
-  await printsToolbar.getByRole('button', { name: 'Filter' }).click();
+  const filterButton = printsToolbar.getByRole('button', { name: 'Filter' });
+  const querryKitIcon = filterButton.locator('.iconify.i-tabler\\:filter');
+  await expect(querryKitIcon).toBeVisible();
+  expect(await querryKitIcon.evaluate((element) => getComputedStyle(element).maskImage)).toContain(
+    'data:image/svg+xml',
+  );
+  await filterButton.click();
   await expect(page.getByText('Archiviert', { exact: true })).toBeVisible();
   const filterMode = page.getByRole('button', { name: 'UND/ODER wechseln' });
   await expect(filterMode).toBeVisible();
@@ -402,4 +426,5 @@ test('setup, navigation, persistence, accessibility, and responsive shell', asyn
   expect(geometry.tableScrollWidth!).toBeGreaterThan(geometry.tableClientWidth!);
   await page.keyboard.press('Tab');
   await expect(page.locator(':focus')).toBeVisible();
+  expect(iconCdnRequests).toEqual([]);
 });

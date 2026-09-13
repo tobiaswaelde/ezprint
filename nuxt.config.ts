@@ -66,6 +66,31 @@ export default defineNuxtConfig({
     fallback: 'light',
     storageKey: 'print-cost-color-mode',
   },
+  icon: {
+    provider: 'none',
+    clientBundle: {
+      scan: true,
+      icons: [
+        'tabler:adjustments',
+        'tabler:arrows-sort',
+        'tabler:cancel',
+        'tabler:eye',
+        'tabler:eye-off',
+        'tabler:filter',
+        'tabler:filter-2',
+        'tabler:grip-vertical',
+        'tabler:layers-intersect-2',
+        'tabler:layers-union',
+        'tabler:pin',
+        'tabler:pinned-off',
+        'tabler:plus',
+        'tabler:search',
+        'tabler:sort-ascending',
+        'tabler:sort-descending',
+        'tabler:x',
+      ],
+    },
+  },
   pwa: {
     registerType: 'autoUpdate',
     manifest: {

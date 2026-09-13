@@ -5,4 +5,13 @@ export default defineAppConfig({
       neutral: 'zinc',
     },
   },
+  querryKit: {
+    table: {
+      icons: {
+        options: {
+          unpin: 'i-tabler-pinned-off',
+        },
+      },
+    },
+  },
 });

@@ -7,6 +7,7 @@ description: Deploy one container with pinned image tags, persistent SQLite stor
 
 Use a current Docker daemon with the Compose plugin, access to GHCR, and writable local storage for the persistent
 volume. Run exactly **one replica**: SQLite is a single-writer database and setup locking is process-local.
+All application icons are included in the image, so browsers do not need access to Iconify or another icon CDN.
 
 The image is `ghcr.io/tobiaswaelde/ezprint`. Pin `vMAJOR.MINOR.PATCH` in production. `latest` follows
 the newest release, while `sha-…` identifies a specific commit build.
