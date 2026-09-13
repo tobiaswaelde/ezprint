@@ -1,5 +1,11 @@
 # ezPrint
 
+## 0.8.3
+
+### Patch Changes
+
+- e760fa3: Bundle all application icons locally so the interface no longer loads icons from an external CDN at runtime.
+
 ## 0.8.2
 
 ### Patch Changes
