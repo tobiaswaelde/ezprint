@@ -1,5 +1,11 @@
 # ezPrint
 
+## 0.8.4
+
+### Patch Changes
+
+- 9f7bbcd: Harden installable PWA support with complete icons, an offline application shell, and controlled update prompts.
+
 ## 0.8.3
 
 ### Patch Changes
