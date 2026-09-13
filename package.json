@@ -9,6 +9,7 @@
   },
   "scripts": {
     "build": "nuxt build",
+    "pwa:check": "tsx scripts/check-pwa.ts",
     "dev": "nuxt dev",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare && prisma generate",
@@ -26,6 +27,7 @@
     "test:setup-demo": "tsx tests/integration/setup-demo-data.ts",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:pwa:e2e": "playwright test --config playwright.pwa.config.ts",
     "db:generate": "prisma generate",
     "db:migrate": "tsx scripts/ensure-database.ts && prisma migrate dev",
     "db:deploy": "tsx scripts/ensure-database.ts && prisma migrate deploy",

@@ -1,7 +1,12 @@
 export default defineNuxtRouteMiddleware(async (to) => {
   if (import.meta.server) return;
 
-  const publicRoutes = new Set(['/setup', '/login']);
+  if (!navigator.onLine) {
+    if (to.path === '/offline') return;
+    return navigateTo({ path: '/offline', query: { redirect: to.fullPath } }, { replace: true });
+  }
+
+  const publicRoutes = new Set(['/setup', '/login', '/offline']);
   const { user, refresh } = useAuth();
   const { $i18n } = useNuxtApp();
   const { initialized } = await $fetch<{ initialized: boolean }>('/api/auth/setup-status');

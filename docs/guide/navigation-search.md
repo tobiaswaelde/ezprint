@@ -23,11 +23,19 @@ while filters, table options, and **New** stay together and align to the right.
 
 ## Install the app
 
-The production build includes a web app manifest and service worker. In a supported browser,
-open your HTTPS instance and use the browser's install or **Add to Home Screen** action to launch
-ezPrint in a standalone window. Installation availability depends on the browser and operating system.
-An active connection to your ezPrint server is still required to sign in, load data, and save changes.
-The development server does not enable the service worker.
+The production build includes a web app manifest, complete application icons, and a service worker. In a supported
+browser, open your HTTPS instance and use ezPrint's installation prompt or the browser's **Install** or
+**Add to Home Screen** action. Dismissing ezPrint's prompt permanently hides that prompt in the current browser
+profile; installation remains available from the browser menu. The development server does not enable the service
+worker.
+
+The installed application shell remains available if the server or network cannot be reached. ezPrint then opens a
+dedicated offline screen and returns to the requested page after the connection is restored. Application records,
+sessions, reports, exports, and backups are never cached for offline use. An active server connection is therefore
+required to sign in, load data, and save changes.
+
+When a new frontend version is ready, ezPrint asks before activating it. Select **Reload now** to switch versions or
+**Later** to keep the current page and any unsaved form input open.
 
 ## Global search
 

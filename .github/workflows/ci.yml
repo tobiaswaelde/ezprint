@@ -26,10 +26,12 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+      - run: pnpm pwa:check
       - run: pnpm test:integration
       - run: pnpm docs:check
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm docs:build
       - run: pnpm test:e2e
+      - run: pnpm test:pwa:e2e
       - run: pnpm test:docs:e2e
       - run: sh tests/container-smoke.sh

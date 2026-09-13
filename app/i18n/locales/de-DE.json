@@ -2,6 +2,20 @@
   "app": {
     "name": "ezPrint"
   },
+  "pwa": {
+    "installTitle": "ezPrint installieren",
+    "installDescription": "Installiere ezPrint für schnellen Zugriff in einem eigenen App-Fenster.",
+    "install": "Installieren",
+    "dismiss": "Nicht mehr anzeigen",
+    "updateTitle": "Update verfügbar",
+    "updateDescription": "Eine neue ezPrint-Version ist bereit. Lade neu, um sie zu verwenden.",
+    "reload": "Jetzt neu laden",
+    "later": "Später",
+    "offlineTitle": "Keine Verbindung",
+    "offlineDescription": "Daten können ohne Verbindung zum ezPrint-Server nicht geladen oder gespeichert werden.",
+    "offlinePageDescription": "Stelle die Verbindung zum ezPrint-Server wieder her, um dich anzumelden und mit deinen Daten zu arbeiten.",
+    "retry": "Erneut versuchen"
+  },
   "nav": {
     "dashboard": "Dashboard",
     "prints": "Drucke",

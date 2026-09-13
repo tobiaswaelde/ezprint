@@ -2,6 +2,20 @@
   "app": {
     "name": "ezPrint"
   },
+  "pwa": {
+    "installTitle": "Install ezPrint",
+    "installDescription": "Install ezPrint for quick access in its own app window.",
+    "install": "Install",
+    "dismiss": "Do not show again",
+    "updateTitle": "Update available",
+    "updateDescription": "A new ezPrint version is ready. Reload to use it.",
+    "reload": "Reload now",
+    "later": "Later",
+    "offlineTitle": "No connection",
+    "offlineDescription": "Data cannot be loaded or saved without a connection to the ezPrint server.",
+    "offlinePageDescription": "Restore the connection to the ezPrint server to sign in and work with your data.",
+    "retry": "Try again"
+  },
   "nav": {
     "dashboard": "Dashboard",
     "prints": "Prints",
