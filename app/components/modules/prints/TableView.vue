@@ -9,8 +9,8 @@
           :filter-fields="filterFields"
           :ui="{
             root: 'border-b border-default',
-            primary: 'flex-wrap items-center gap-3 py-3',
-            secondary: 'flex-wrap items-center gap-3 py-3',
+            primary: 'flex-wrap items-center gap-3',
+            secondary: 'flex-wrap items-center gap-3',
           }"
         >
           <template #options>
@@ -28,7 +28,15 @@
           </template>
           <template #new>
             <slot name="actions" :open-create="openCreate">
-              <UButton :to="exportUrl" external color="neutral" variant="outline" :label="t('report.csv')" />
+              <UTooltip :text="t('report.csv')">
+                <UButton
+                  :to="exportUrl"
+                  icon="i-tabler-download"
+                  external
+                  color="neutral"
+                  variant="outline"
+                />
+              </UTooltip>
               <CommonButtonsNew @click="openCreate" />
             </slot>
           </template>
