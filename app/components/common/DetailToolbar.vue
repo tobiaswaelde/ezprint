@@ -1,7 +1,7 @@
 <template>
   <UDashboardToolbar
     :ui="{
-      root: 'flex-wrap items-center gap-3 py-3',
+      root: 'flex-wrap items-center gap-3',
       left: 'min-w-0 flex-1',
       right: 'ml-auto flex-wrap justify-end gap-2',
     }"

@@ -2,7 +2,7 @@
   <UDashboardToolbar
     data-table-toolbar
     :ui="{
-      root: 'flex-wrap items-center gap-3 py-3',
+      root: 'flex-wrap items-center gap-3',
       left: 'shrink-0',
       right: 'ml-auto min-w-0 basis-full flex-wrap justify-end gap-2 xl:basis-auto',
     }"
