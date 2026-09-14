@@ -1,5 +1,11 @@
 # ezPrint
 
+## 0.8.6
+
+### Patch Changes
+
+- e0cdd3d: remove padding from toolbars
+
 ## 0.8.5
 
 ### Patch Changes
