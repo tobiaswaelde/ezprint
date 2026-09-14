@@ -1,5 +1,11 @@
 # ezPrint
 
+## 0.8.5
+
+### Patch Changes
+
+- cb93ec8: update download-csv button
+
 ## 0.8.4
 
 ### Patch Changes
