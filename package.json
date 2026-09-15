@@ -1,6 +1,6 @@
 {
   "name": "ezprint",
-  "version": "0.8.6",
+  "version": "0.8.7",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@12.3.4",
