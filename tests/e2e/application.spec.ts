@@ -219,7 +219,17 @@ test('setup, navigation, persistence, accessibility, and responsive shell', asyn
   await expect(resourceDialog.getByLabel('Name')).toHaveValue('Acme Updated');
   await page.keyboard.press('Escape');
   await customerDetailToolbar.getByRole('button', { name: 'Neuer Druck' }).click();
-  await expect(createPrintDialog.getByRole('combobox', { name: 'Kunden' })).toContainText('Acme Updated');
+  const customerSelect = createPrintDialog.getByRole('button', { name: 'Kunden' });
+  await expect(customerSelect).toContainText('Acme Updated');
+  await customerSelect.click();
+  const customerSearch = page.getByPlaceholder('Suchen', { exact: true });
+  await expect(customerSearch).toBeFocused();
+  await customerSearch.fill('kein Treffer');
+  await expect(page.getByRole('option', { name: 'Acme Updated', exact: true })).toBeHidden();
+  await customerSearch.fill('Acme Upd');
+  await expect(page.getByRole('option', { name: 'Acme Updated', exact: true })).toBeVisible();
+  await page.getByRole('option', { name: 'Acme Updated', exact: true }).click();
+  await expect(customerSelect).toContainText('Acme Updated');
   await createPrintDialog.getByRole('button', { name: 'Abbrechen' }).click();
   await customerDetailToolbar.getByRole('button', { name: 'Filter' }).click();
   await page.getByRole('dialog').getByRole('combobox').click();

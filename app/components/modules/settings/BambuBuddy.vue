@@ -24,7 +24,7 @@
           </ul>
         </div>
         <UFormField :label="t('nav.printers')"
-          ><USelect
+          ><USelectMenu
             v-model="printerId"
             :items="
               status.printers.map((item: { id: string; name: string }) => ({
@@ -32,11 +32,14 @@
                 value: item.id,
               }))
             "
+            value-key="value"
+            :aria-label="t('nav.printers')"
+            :search-input="{ placeholder: t('common.search') }"
             class="w-full"
         /></UFormField>
         <div v-if="selected" class="space-y-3">
           <UFormField :label="t('integration.remotePrinter')"
-            ><USelect
+            ><USelectMenu
               v-model="remotePrinter"
               :items="[
                 { label: t('integration.unlinked'), value: 0 },
@@ -45,6 +48,9 @@
                   value: item.id,
                 })),
               ]"
+              value-key="value"
+              :aria-label="t('integration.remotePrinter')"
+              :search-input="{ placeholder: t('common.search') }"
               class="w-full"
           /></UFormField>
           <div class="flex flex-wrap gap-2">
@@ -81,12 +87,14 @@
                   t('integration.mappingWarning')
                 }}</span>
               </p>
-              <USelect
+              <USelectMenu
                 v-model="trayChoices[tray.slot]"
                 :items="
                   spools.map((item: { id: string; code: string }) => ({ label: item.code, value: item.id }))
                 "
+                value-key="value"
                 :aria-label="`${t('integration.slot')} ${tray.slot}`"
+                :search-input="{ placeholder: t('common.search') }"
               />
               <UButton
                 :label="t('integration.map')"

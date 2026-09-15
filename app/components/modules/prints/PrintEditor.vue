@@ -118,26 +118,32 @@
               ><CommonSeriesSelect v-model="form.seriesId" @customer="form.customerId = $event"
             /></UFormField>
             <UFormField name="customerId" :label="t('nav.customers')"
-              ><USelect
+              ><USelectMenu
                 v-model="form.customerId"
                 class="w-full"
                 icon="i-tabler-user"
+                :aria-label="t('nav.customers')"
+                :search-input="{ placeholder: t('common.search') }"
                 value-key="value"
                 :items="customerOptions"
             /></UFormField>
             <UFormField name="printerId" :label="t('nav.printers')" required
-              ><USelect
+              ><USelectMenu
                 v-model="form.printerId"
                 class="w-full"
                 icon="i-tabler-printer"
+                :aria-label="t('nav.printers')"
+                :search-input="{ placeholder: t('common.search') }"
                 value-key="value"
                 :items="printerOptions"
             /></UFormField>
             <UFormField name="buildPlateId" :label="t('master.buildPlate')" required
-              ><USelect
+              ><USelectMenu
                 v-model="form.buildPlateId"
                 class="w-full"
                 icon="i-tabler-square"
+                :aria-label="t('master.buildPlate')"
+                :search-input="{ placeholder: t('common.search') }"
                 value-key="value"
                 :items="buildPlateOptions"
             /></UFormField>
@@ -160,10 +166,12 @@
               class="grid items-start gap-3 md:grid-cols-[1fr_8rem_8rem_auto]"
             >
               <UFormField :name="`hotends.${index}.componentId`" :label="t('master.hotend')" required
-                ><USelect
+                ><USelectMenu
                   v-model="hotend.componentId"
                   class="w-full"
                   icon="i-tabler-flame"
+                  :aria-label="t('master.hotend')"
+                  :search-input="{ placeholder: t('common.search') }"
                   value-key="value"
                   :items="hotendOptions"
               /></UFormField>

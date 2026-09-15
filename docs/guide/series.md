@@ -7,7 +7,7 @@ description: Group production runs, track successful quantities, and repeat cust
 
 A series groups print runs under a name, optional customer, target quantity, and notes. The **Print series** table supports search, status filtering, archived entries, and pagination. It shows production progress, run counts, actual and failed costs, and the latest activity. Row actions open the series, start a new print, or archive and restore the series.
 
-Use **New** to open the creation dialog, then select the series in a new draft or create a print directly from its row or detail page. A series customer is inherited; conflicting customer assignments are rejected. Prints can also remain independent.
+Use **New** to open the creation dialog, then select the series in a new draft or create a print directly from its row or detail page. The customer selector searches its currently loaded entries. A series customer is inherited; conflicting customer assignments are rejected. Prints can also remain independent.
 
 Print series can be disabled under **Settings → Features**. Series pages and APIs then become unavailable, but existing assignments remain stored and visible as plain text in print history.
 
@@ -19,7 +19,7 @@ Only non-archived **Done** runs with a successful outcome contribute to produced
 
 ![Series detail with run history and production totals](/screenshots/series-detail.jpg)
 
-The history supports dates, printer, workflow status, outcome, and archived state. Pagination limits displayed rows; totals cover the entire matching set. **Next run** copies a member into a draft using current inventory prices. Existing snapshots remain immutable. Duplicates, retries, and repeat orders clear the previous sales value so that it must be confirmed for the new run.
+The history supports dates, a searchable printer selector, workflow status, outcome, and archived state. Pagination limits displayed rows; totals cover the entire matching set. **Next run** copies a member into a draft using current inventory prices. Existing snapshots remain immutable. Duplicates, retries, and repeat orders clear the previous sales value so that it must be confirmed for the new run.
 
 ## Customer history
 

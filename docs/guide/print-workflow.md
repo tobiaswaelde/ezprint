@@ -36,6 +36,9 @@ The dialog validates the current section before moving forward:
    enter a positive used weight for each.
 4. **Review:** add an optional note and verify the live cost breakdown before selecting **Save draft**.
 
+Customer, printer, component, filament, series, and spool selectors are searchable within their currently loaded
+entries. Existing inventory loading limits still apply.
+
 Changing a printer resets component selections because compatibility may differ. **Back** preserves valid values,
 while **Cancel** closes the dialog without creating a print.
 

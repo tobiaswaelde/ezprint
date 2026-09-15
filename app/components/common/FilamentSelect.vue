@@ -1,5 +1,12 @@
 <template>
-  <USelect v-model="model" v-bind="$attrs" value-key="value" :items="items">
+  <USelectMenu
+    v-model="model"
+    v-bind="$attrs"
+    value-key="value"
+    :items="items"
+    :aria-label="$attrs['aria-label'] || t('nav.filaments')"
+    :search-input="{ placeholder: t('common.search') }"
+  >
     <template #leading>
       <UAvatar
         v-if="selectedItem"
@@ -21,7 +28,7 @@
         :style="{ backgroundColor: item.colorHex }"
       />
     </template>
-  </USelect>
+  </USelectMenu>
 </template>
 
 <script setup lang="ts">
@@ -36,5 +43,6 @@ interface FilamentSelectOption {
 
 const props = defineProps<{ items: FilamentSelectOption[] }>();
 const model = defineModel<string>({ required: true });
+const { t } = useI18n();
 const selectedItem = computed(() => props.items.find((item) => item.value === model.value));
 </script>

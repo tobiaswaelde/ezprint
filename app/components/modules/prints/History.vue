@@ -15,7 +15,13 @@
         ><USelect v-model="filters.outcome" :items="outcomeOptions" class="w-full"
       /></UFormField>
       <UFormField :label="t('nav.printers')"
-        ><USelect v-model="filters.printerId" :items="printerOptions" class="w-full"
+        ><USelectMenu
+          v-model="filters.printerId"
+          value-key="value"
+          :items="printerOptions"
+          :aria-label="t('nav.printers')"
+          :search-input="{ placeholder: t('common.search') }"
+          class="w-full"
       /></UFormField>
       <UCheckbox v-model="filters.includeArchived" :label="t('spool.includeArchived')" />
     </div>

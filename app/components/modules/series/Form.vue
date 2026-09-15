@@ -5,7 +5,14 @@
       ><UInput v-model="form.name" class="w-full" icon="i-tabler-tag" autofocus
     /></UFormField>
     <UFormField name="customerId" :label="t('nav.customers')"
-      ><USelect v-model="form.customerId" :items="customers" class="w-full" icon="i-tabler-user"
+      ><USelectMenu
+        v-model="form.customerId"
+        value-key="value"
+        :items="customers"
+        :aria-label="t('nav.customers')"
+        :search-input="{ placeholder: t('common.search') }"
+        class="w-full"
+        icon="i-tabler-user"
     /></UFormField>
     <UFormField name="targetQuantity" :label="t('series.target')"
       ><UInput

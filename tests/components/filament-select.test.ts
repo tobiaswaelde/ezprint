@@ -18,8 +18,14 @@ describe('FilamentSelect', () => {
       },
     });
 
+    const selectMenu = wrapper.findComponent({ name: 'USelectMenu' });
+    expect(selectMenu.exists()).toBe(true);
     expect(wrapper.get('[data-slot="filamentColor"]').attributes('style')).toContain(
       'background-color: #112233',
     );
+
+    selectMenu.vm.$emit('update:modelValue', 'filament-2');
+    await wrapper.vm.$nextTick();
+    expect(wrapper.emitted('update:modelValue')).toEqual([['filament-2']]);
   });
 });
