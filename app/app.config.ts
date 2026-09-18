@@ -4,6 +4,11 @@ export default defineAppConfig({
       primary: 'blue',
       neutral: 'zinc',
     },
+    dashboardToolbar: {
+      slots: {
+        root: 'min-h-0',
+      },
+    },
   },
   querryKit: {
     table: {

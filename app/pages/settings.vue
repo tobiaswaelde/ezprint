@@ -1,8 +1,8 @@
 <template>
   <LayoutPagePanel panel-id="settings" :title="t('nav.settings')">
     <template #toolbar>
-      <UDashboardToolbar>
-        <UNavigationMenu highlight class="-mx-1 flex-1" :items="navigation" />
+      <UDashboardToolbar data-settings-toolbar>
+        <UNavigationMenu highlight class="-mx-1 flex-1" :items="navigation" :ui="{ item: 'py-0' }" />
       </UDashboardToolbar>
     </template>
 
