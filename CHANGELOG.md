@@ -1,5 +1,11 @@
 # ezPrint
 
+## 0.8.7
+
+### Patch Changes
+
+- 87f5fa9: make data selection fields searchable
+
 ## 0.8.6
 
 ### Patch Changes
