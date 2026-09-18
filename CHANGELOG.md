@@ -1,5 +1,11 @@
 # ezPrint
 
+## 0.8.8
+
+### Patch Changes
+
+- 7e0fdb0: Remove default vertical spacing and minimum height from page toolbars for a consistent compact layout.
+
 ## 0.8.7
 
 ### Patch Changes
