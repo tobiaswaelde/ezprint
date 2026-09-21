@@ -101,7 +101,7 @@ export const printDraftFormSchema = z.object({
   notes: z.string().trim().max(5000),
 });
 
-export const printDraftSchema = z.object({
+const legacyPrintDraftSchema = z.object({
   quantity: printQuantitySchema,
   salesValue: salesValueSchema,
   seriesId: z
@@ -137,6 +137,48 @@ export const printDraftSchema = z.object({
     .nullish()
     .transform((value) => value || null),
 });
+
+export const printPartSchema = legacyPrintDraftSchema
+  .pick({ printerId: true, buildPlateId: true, hotends: true, otherComponentIds: true, filaments: true })
+  .extend({ id: z.string().min(1).optional() });
+export type PrintPartInput = z.output<typeof printPartSchema>;
+
+const multipartPrintDraftSchema = legacyPrintDraftSchema
+  .omit({ printerId: true, buildPlateId: true, hotends: true, otherComponentIds: true, filaments: true })
+  .extend({ parts: z.array(printPartSchema).min(1).max(100) })
+  .refine(
+    (input) =>
+      input.parts.reduce(
+        (total, part) => total + part.hotends.reduce((sum, hotend) => sum + hotend.durationSeconds, 0),
+        0,
+      ) <= 2147483647,
+    { path: ['parts'], message: 'Combined print duration exceeds the supported range' },
+  );
+
+// Keep the singular fields as first-part aliases for existing API clients.
+export const printDraftSchema = z.union([
+  multipartPrintDraftSchema.transform((input) => ({ ...input, ...input.parts[0]! })),
+  legacyPrintDraftSchema.extend({ parts: z.never().optional() }).transform((input) => ({
+    ...input,
+    parts: [printPartSchema.parse(input)],
+  })),
+]);
+
+export const printPartFormSchema = printDraftFormSchema.pick({
+  printerId: true,
+  buildPlateId: true,
+  hotends: true,
+  otherComponentIds: true,
+  filaments: true,
+});
+export const multipartPrintDraftFormSchema = printDraftFormSchema
+  .omit({ printerId: true, buildPlateId: true, hotends: true, otherComponentIds: true, filaments: true })
+  .extend({
+    parts: z
+      .array(printPartFormSchema.extend({ id: z.string().optional() }))
+      .min(1)
+      .max(100),
+  });
 
 export const printListQuerySchema = z
   .object({

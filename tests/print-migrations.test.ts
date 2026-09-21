@@ -24,8 +24,35 @@ it('preserves version 1 snapshot values when adding quantity and exact unit cost
       VALUES ('snapshot', 'print', 0.32, 'Historical printer', 100, 1000, 0.1, 100, 0.3, 0.15, 1.274575, 0.0576, 1.782175, 'EUR', '1');
     `);
     const original = database.prepare('SELECT * FROM PrintCostSnapshot').get();
-    for (const name of migrations.filter((name) => name >= '20260911160000'))
+    const preserved: Record<string, unknown> = {};
+    for (const name of migrations.filter((name) => name >= '20260911160000')) {
+      if (name.endsWith('_print_parts')) {
+        database.exec(`
+          INSERT INTO Component (id, name, type, purchasePrice, expectedLifetimeHours, updatedAt)
+          VALUES ('plate', 'Legacy plate', 'BUILD_PLATE', 20, 1000, CURRENT_TIMESTAMP);
+          INSERT INTO PrintComponentUsage (id, printJobId, componentId, componentType, componentName, purchasePrice,
+            expectedLifetimeHours, hourlyRate, appliedDurationSeconds, lineCost)
+          VALUES ('plate-usage', 'print', 'plate', 'BUILD_PLATE', 'Legacy plate', 20, 1000, 0.02, 3600, 0.02);
+          INSERT INTO PrintFilamentUsage (id, printJobId, filamentId, filamentName, manufacturer, material,
+            purchasePrice, netWeightGrams, costPerGram, usedGrams, lineCost)
+          VALUES ('filament-usage', 'print', 'filament', 'Legacy PLA', 'Synthetic maker', 'PLA', 20, 1000, 0.02, 10, 0.2);
+          INSERT INTO PrintOutcome (id, printJobId, status, durationSeconds, inputSnapshot, costSnapshot)
+          VALUES ('outcome', 'print', 'SUCCESS', 3600, '{"legacy":"input"}', '{"legacy":"costs"}');
+          INSERT INTO BambuPrintLink (id, printJobId, remoteLogId, cachedJson, importedJson)
+          VALUES ('link', 'print', 123, '{"legacy":"log"}', '{"legacy":"import"}');
+        `);
+        for (const table of ['PrintComponentUsage', 'PrintFilamentUsage', 'PrintOutcome', 'BambuPrintLink'])
+          preserved[table] = database.prepare(`SELECT * FROM ${table}`).get();
+      }
       database.exec(readFileSync(join('prisma/migrations', name, 'migration.sql'), 'utf8'));
+    }
+    for (const table of ['PrintComponentUsage', 'PrintFilamentUsage'])
+      expect(database.prepare(`SELECT * FROM ${table}`).get()).toEqual({
+        ...(preserved[table] as object),
+        partId: 'part:print',
+      });
+    for (const table of ['PrintOutcome', 'BambuPrintLink'])
+      expect(database.prepare(`SELECT * FROM ${table}`).get()).toEqual(preserved[table]);
     expect(database.prepare('SELECT * FROM PrintCostSnapshot').get()).toEqual({
       ...original!,
       quantity: 1,
@@ -33,6 +60,15 @@ it('preserves version 1 snapshot values when adding quantity and exact unit cost
       calculationJson: null,
       salesValue: null,
     });
+    expect(database.prepare('SELECT * FROM PrintPart').get()).toEqual({
+      id: 'part:print',
+      printJobId: 'print',
+      position: 0,
+      printerId: 'printer',
+      totalDurationSeconds: 3600,
+      snapshotJson: null,
+    });
+    expect(database.prepare('PRAGMA foreign_key_check').all()).toEqual([]);
     expect(database.prepare('SELECT quantity, totalCost FROM PrintJob').get()).toEqual({
       quantity: 1,
       totalCost: 1.782175,

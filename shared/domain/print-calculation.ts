@@ -32,6 +32,7 @@ export interface PrintCalculationInput {
 export interface CostBreakdownLine {
   category: 'printer' | 'component' | 'filament' | 'electricity';
   sourceId: string;
+  partId?: string;
   label: string;
   quantity: string;
   unitRate: string;
@@ -175,5 +176,37 @@ export function calculatePrintCost(input: PrintCalculationInput): PrintCalculati
     electricityCost: canonicalDecimal(electricityCost),
     totalCost: canonicalDecimal(totalCost),
     lines,
+  };
+}
+
+/** Sum machine time and exact costs; quantity describes complete products. */
+export function aggregatePrintPartCosts(
+  parts: Array<{ id: string; costs: PrintCalculationResult }>,
+  quantity: number,
+  calculationVersion = '4',
+): PrintCalculationResult {
+  printQuantitySchema.parse(quantity);
+  if (!parts.length) throw new Error('At least one print part is required');
+  const currency = parts[0]!.costs.currency;
+  if (parts.some((part) => part.costs.currency !== currency))
+    throw new Error('Print parts must use the same currency');
+  const sum = (key: 'printerCost' | 'componentCost' | 'filamentCost' | 'electricityCost' | 'totalCost') =>
+    canonicalDecimal(parts.reduce((total, part) => total.plus(part.costs[key]), new Decimal(0)));
+  const totalDurationSeconds = parts.reduce((total, part) => total + part.costs.totalDurationSeconds, 0);
+  if (!Number.isSafeInteger(totalDurationSeconds) || totalDurationSeconds > 2147483647)
+    throw new Error('Combined print duration exceeds the supported range');
+  const totalCost = sum('totalCost');
+  return {
+    calculationVersion,
+    currency,
+    quantity,
+    totalDurationSeconds,
+    printerCost: sum('printerCost'),
+    componentCost: sum('componentCost'),
+    filamentCost: sum('filamentCost'),
+    electricityCost: sum('electricityCost'),
+    totalCost,
+    costPerUnit: canonicalDecimal(new Decimal(totalCost).div(quantity)),
+    lines: parts.flatMap((part) => part.costs.lines.map((line) => ({ ...line, partId: part.id }))),
   };
 }

@@ -38,7 +38,12 @@ export async function dashboardData(periodInput: unknown, now = new Date()) {
     }),
     db.printJob.findMany({
       where: { ...includedCustomer, status: { not: 'DONE' }, archivedAt: null },
-      include: { customer: true, printer: true, snapshot: true },
+      include: {
+        customer: true,
+        printer: true,
+        snapshot: true,
+        parts: { include: { printer: true }, orderBy: { position: 'asc' } },
+      },
       orderBy: { updatedAt: 'desc' },
     }),
   ]);
@@ -128,6 +133,7 @@ export async function dashboardData(periodInput: unknown, now = new Date()) {
       status: job.status,
       customer: job.customer ? { id: job.customer.id, name: job.customer.name } : null,
       printer: { id: job.printer.id, name: job.printer.name },
+      printers: job.parts.map((part) => ({ id: part.printer.id, name: part.printer.name })),
       totalDurationSeconds: job.totalDurationSeconds,
       totalCost: job.snapshot?.calculationJson
         ? JSON.parse(job.snapshot.calculationJson).totalCost

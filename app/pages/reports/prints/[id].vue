@@ -36,15 +36,15 @@
           </tbody>
         </table>
       </section>
-      <section>
-        <h2>{{ t('report.sources') }}</h2>
+      <section v-for="(part, index) in job.parts" :key="part.id">
+        <h2>{{ t('report.sources') }} · {{ t('prints.part', { number: index + 1 }) }}</h2>
         <p>
-          {{ t('report.formula') }}: {{ job.snapshot.formulaVersion }} · {{ t('report.electricity') }}:
-          {{ decimal(job.snapshot.electricityPricePerKwh) }} {{ job.currency }}/kWh
+          {{ t('report.formula') }}: {{ part.snapshot!.formulaVersion }} · {{ t('report.electricity') }}:
+          {{ decimal(part.snapshot!.electricityPricePerKwh) }} {{ job.currency }}/kWh
         </p>
         <p>
-          {{ job.snapshot.printerName }} · {{ decimal(job.snapshot.printerHourlyRate) }} {{ job.currency }}/h
-          · {{ job.snapshot.printerPowerWatts }} W
+          {{ part.snapshot!.printerName }} · {{ decimal(part.snapshot!.printerHourlyRate) }}
+          {{ job.currency }}/h · {{ part.snapshot!.printerPowerWatts }} W
         </p>
         <table>
           <thead>
@@ -56,7 +56,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="line in job.componentUsages" :key="line.id">
+            <tr v-for="line in part.componentUsages" :key="line.id">
               <th scope="row">{{ line.name }}</th>
               <td>{{ decimal(line.hourlyRate) }} {{ job.currency }}/h</td>
               <td>{{ duration(line.appliedDurationSeconds) }}</td>
@@ -74,7 +74,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="line in job.filamentUsages" :key="line.id">
+            <tr v-for="line in part.filamentUsages" :key="line.id">
               <th scope="row">
                 {{ line.name }}<small class="block">{{ line.spoolCode ?? '—' }}</small>
               </th>
@@ -127,7 +127,10 @@ const identity = computed(() => {
   return [
     [t('report.id'), print.id],
     [t('nav.customers'), print.customer?.name],
-    [t('nav.printers'), print.snapshot?.printerName ?? print.printer.name],
+    [
+      t('nav.printers'),
+      print.parts.map((part) => part.snapshot?.printerName ?? part.printer.name).join('; '),
+    ],
     [t('nav.series'), print.series?.name],
     [t('prints.quantity'), String(print.quantity)],
     [t('report.completed'), print.completedAt ? dateTime(print.completedAt) : '—'],

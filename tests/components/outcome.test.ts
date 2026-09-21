@@ -7,6 +7,7 @@ import type { PrintJobDto } from '../../shared/types/prints';
 
 it('requires a failure reason only after choosing a failed outcome', async () => {
   const job: PrintJobDto = {
+    parts: [],
     seriesId: null,
     series: null,
     repeatOf: null,
@@ -50,6 +51,7 @@ it('requires a failure reason only after choosing a failed outcome', async () =>
     retryOf: null,
     retries: [],
   };
+  job.parts = [{ ...job, id: 'part', position: 0 }];
   const wrapper = await mountSuspended(Outcome, { props: { job } });
   expect(wrapper.text()).not.toContain('Fehlergrund');
   wrapper.findComponent({ name: 'USelect' }).vm.$emit('update:modelValue', 'FAILED');

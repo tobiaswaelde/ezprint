@@ -184,15 +184,11 @@ defineRouteMeta({
               note: { type: ['string', 'null'], maxLength: 2000 },
             },
           },
-          PrintDraftInput: {
+          PrintPartInput: {
             type: 'object',
-            required: ['name', 'printerId', 'buildPlateId', 'hotends', 'filaments'],
+            required: ['printerId', 'buildPlateId', 'hotends', 'filaments'],
             properties: {
-              quantity: { type: 'integer', minimum: 1, maximum: 1000000, default: 1 },
-              salesValue: { oneOf: [{ $ref: '#/components/schemas/Decimal' }, { type: 'null' }] },
-              seriesId: { type: ['string', 'null'] },
-              name: { type: 'string', minLength: 1, maxLength: 200 },
-              customerId: { type: ['string', 'null'] },
+              id: { type: 'string', description: 'Existing part ID when editing a draft.' },
               printerId: { type: 'string' },
               buildPlateId: { type: 'string' },
               hotends: {
@@ -221,8 +217,34 @@ defineRouteMeta({
                   },
                 },
               },
+            },
+          },
+          PrintDraftInput: {
+            type: 'object',
+            required: ['name'],
+            properties: {
+              quantity: { type: 'integer', minimum: 1, maximum: 1000000, default: 1 },
+              salesValue: { oneOf: [{ $ref: '#/components/schemas/Decimal' }, { type: 'null' }] },
+              seriesId: { type: ['string', 'null'] },
+              name: { type: 'string', minLength: 1, maxLength: 200 },
+              customerId: { type: ['string', 'null'] },
               notes: { type: ['string', 'null'], maxLength: 5000 },
             },
+            oneOf: [
+              { allOf: [{ $ref: '#/components/schemas/PrintPartInput' }, { not: { required: ['parts'] } }] },
+              {
+                type: 'object',
+                required: ['parts'],
+                properties: {
+                  parts: {
+                    type: 'array',
+                    minItems: 1,
+                    maxItems: 100,
+                    items: { $ref: '#/components/schemas/PrintPartInput' },
+                  },
+                },
+              },
+            ],
           },
           PrintWorkflowInput: {
             type: 'object',
@@ -238,6 +260,20 @@ defineRouteMeta({
             required: ['status', 'durationSeconds', 'filaments'],
             properties: {
               status: { type: 'string', enum: ['SUCCESS', 'FAILED'] },
+              parts: {
+                type: 'array',
+                minItems: 1,
+                maxItems: 100,
+                description: 'Required for multiple parts; durations must sum to durationSeconds.',
+                items: {
+                  type: 'object',
+                  required: ['partId', 'durationSeconds'],
+                  properties: {
+                    partId: { type: 'string' },
+                    durationSeconds: { type: 'integer', minimum: 0, maximum: 2147483647 },
+                  },
+                },
+              },
               durationSeconds: { type: 'integer', minimum: 0, maximum: 2147483647 },
               filaments: {
                 type: 'array',

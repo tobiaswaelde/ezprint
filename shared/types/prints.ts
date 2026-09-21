@@ -9,7 +9,20 @@ export type OutcomeRevisionDto = PrintOutcomeInput & {
   costs: PrintCalculationResult;
 };
 
+export interface PrintPartDto {
+  id: string;
+  position: number;
+  printerId: string;
+  printer: { id: string; name: string };
+  totalDurationSeconds: number;
+  totalCost: string;
+  componentUsages: PrintJobDto['componentUsages'];
+  filamentUsages: PrintJobDto['filamentUsages'];
+  snapshot: PrintJobDto['snapshot'];
+}
+
 export interface PrintJobDto {
+  parts: PrintPartDto[];
   series: { id: string; name: string; archivedAt: string | null } | null;
   seriesId: string | null;
   repeatOf: { id: string; name: string } | null;
@@ -108,6 +121,7 @@ export interface DashboardDto {
     status: PrintStatus;
     customer: { id: string; name: string } | null;
     printer: { id: string; name: string };
+    printers: Array<{ id: string; name: string }>;
     totalDurationSeconds: number;
     totalCost: string;
     currency: string;

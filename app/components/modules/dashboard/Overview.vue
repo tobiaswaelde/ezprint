@@ -172,7 +172,7 @@
               </td>
               <td class="p-3">
                 <UBadge color="neutral" variant="subtle" icon="i-tabler-printer">{{
-                  item.printer.name
+                  [...new Set(item.printers.map((printer: { name: string }) => printer.name))].join(', ')
                 }}</UBadge>
               </td>
               <td class="p-3">

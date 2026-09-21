@@ -40,13 +40,16 @@ export const printCsvColumns = [
   'planned_margin',
   'revenue',
   'realized_margin',
+  'parts',
 ] as const;
 export function printCsvRow(print: PrintJobDto) {
   const values = [
     print.id,
     print.name,
     print.customer?.name,
-    print.snapshot?.printerName ?? print.printer.name,
+    print.parts?.map((part) => part.snapshot?.printerName ?? part.printer.name).join('; ') ??
+      print.snapshot?.printerName ??
+      print.printer.name,
     print.series?.name,
     print.completedAt,
     print.archivedAt,
@@ -69,6 +72,14 @@ export function printCsvRow(print: PrintJobDto) {
     print.financials.plannedMargin,
     print.financials.realizedRevenue,
     print.financials.realizedMargin,
+    JSON.stringify(
+      print.parts?.map((part) => ({
+        printer: part.snapshot?.printerName ?? part.printer.name,
+        buildPlate: part.componentUsages.find((line) => line.type === 'BUILD_PLATE')?.name,
+        durationSeconds: part.totalDurationSeconds,
+        totalCost: part.totalCost,
+      })) ?? [],
+    ),
   ];
   return (
     values.map((value, index) => csvCell(value, [0, 1, 2, 3, 4, 17, 18].includes(index))).join(',') + '\r\n'

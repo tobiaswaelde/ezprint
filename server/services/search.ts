@@ -30,14 +30,14 @@ export async function searchApplication(query: Record<string, unknown>) {
           OR: [
             { name: { contains: q } },
             { customer: { name: { contains: q } } },
-            { printer: { name: { contains: q } } },
+            { parts: { some: { printer: { name: { contains: q } } } } },
           ],
         },
         select: {
           id: true,
           name: true,
           customer: { select: { name: true } },
-          printer: { select: { name: true } },
+          parts: { select: { printer: { select: { name: true } } }, orderBy: { position: 'asc' } },
         },
         orderBy: { updatedAt: 'desc' },
         take: 5,
@@ -148,7 +148,9 @@ export async function searchApplication(query: Record<string, unknown>) {
       items: prints.map((item) => ({
         id: item.id,
         title: item.name,
-        description: [item.customer?.name, item.printer.name].filter(Boolean).join(' · '),
+        description: [item.customer?.name, ...new Set(item.parts.map((part) => part.printer.name))]
+          .filter(Boolean)
+          .join(' · '),
         to: `/prints/${item.id}`,
       })),
     },

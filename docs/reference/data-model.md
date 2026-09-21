@@ -20,7 +20,8 @@ Spoolman and Bambuddy enablement, server URLs, and server-only credentials. Null
 environment-variable defaults for deployments upgraded from earlier versions. Credentials are never serialized
 in settings or integration responses; database files and backups still require secret-level protection.
 
-A `PrintJob` references one printer, an optional customer, and component and filament usage rows. Its workflow
+A `PrintJob` owns ordered `PrintPart` records and an optional customer. Each part references one printer and
+component and filament usage rows. The parent printer reference remains the first-part compatibility field. Its workflow
 status is one of `DRAFT`, `PRINTING`, `PRINTED`, `SHIPPED`, or `DONE`; payment is tracked independently with the
 nullable `paidAt` timestamp. Usage rows copy
 names, prices, lifetimes, quantities, and line costs at calculation time. `PrintCostSnapshot` also retains totals,
@@ -54,3 +55,10 @@ Each optional `PrintOutcome` has a unique print reference, status, duration, rea
 Spoolman links retain unique nullable external IDs on manufacturers, filaments, and spools. A spool stores one `stockAuthority`, nullable remote balance, remote state, last successful sync, and safe error code. Native balances remain append-only ledger sums; linked balances remain remote mirrors. `SpoolSyncOperation` uniquely identifies each outcome usage/correction and records pending, applied, failed, or uncertain dispatch state. No remote call occurs inside the outcome transaction.
 
 Printers retain a unique nullable Bambuddy ID and sanitized cached status. `BambuTrayMapping` has one explicit spool per printer/slot. `BambuPrintLink` uniquely binds one remote print-log ID to one local print and stores validated cached data plus confirmed import metadata. Imported outcome metadata is persisted in the same transaction as its outcome and native stock deduction. Completed calculations do not depend on either remote service.
+
+`PrintPart` has a stable ID, unique position within its parent, machine duration, and frozen `snapshotJson`.
+Usage rows reference both their parent print and part. New planned snapshots use version `4`, including part IDs
+on breakdown lines so repeated component/spool sources remain distinct. Parent totals aggregate all parts.
+The parts migration creates one part per existing print and preserves usage IDs, old snapshot versions, costs,
+outcomes, and Bambuddy links. A migrated part with no `snapshotJson` reads the unchanged parent snapshot.
+Multipart actuals store per-part durations in the outcome input JSON and use `actual-2` cost snapshots.
