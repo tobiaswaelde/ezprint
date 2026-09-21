@@ -559,6 +559,9 @@ test('regenerates every application screenshot used by the documentation', async
   await expect(
     page.getByRole('button', { name: 'Confirm actual values and import outcome', exact: true }),
   ).toBeVisible();
+  await page
+    .getByRole('button', { name: 'Confirm actual values and import outcome', exact: true })
+    .scrollIntoViewIfNeeded();
   await capture(page, 'bambubuddy-preview.jpg');
   await page.getByRole('button', { name: 'Confirm actual values and import outcome', exact: true }).click();
   await expect(page.getByText('Applied', { exact: true })).toBeVisible();
@@ -602,7 +605,7 @@ test('regenerates every application screenshot used by the documentation', async
   await manualPart.getByLabel('Polymaker PLA - Teal · Actual weight (g)', { exact: true }).fill('4');
   await expect(linkedPart.getByLabel('Actual duration (seconds)', { exact: true })).toBeDisabled();
   await expect(page.getByLabel('Print outcome', { exact: true })).toBeDisabled();
-  await page.setViewportSize({ width: 1280, height: 1000 });
+  await page.setViewportSize({ width: 1280, height: 1100 });
   await manualPart.evaluate((element) => element.scrollIntoView({ block: 'start' }));
   await capture(page, 'bambubuddy-parts.jpg');
   const importedParts = page.waitForResponse(
