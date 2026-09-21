@@ -9,6 +9,9 @@ test('launches the cached application shell without requesting API data offline'
   await page.reload();
   await expect.poll(() => page.evaluate(() => navigator.serviceWorker.controller !== null)).toBe(true);
 
+  // Finish the reloaded online page before observing requests made by offline navigation.
+  await expect(page.getByRole('heading', { name: 'Ersteinrichtung' })).toBeVisible();
+
   const apiRequests: string[] = [];
   page.on('request', (request) => {
     if (new URL(request.url()).pathname.startsWith('/api/')) apiRequests.push(request.url());

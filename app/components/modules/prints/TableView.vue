@@ -111,7 +111,7 @@
             <th class="px-4 py-3 font-medium">{{ t('prints.status') }}</th>
             <th class="px-4 py-3 font-medium">{{ t('outcome.title') }}</th>
             <th class="px-4 py-3 font-medium">{{ t('prints.payment') }}</th>
-            <th v-if="customerId" class="px-4 py-3 text-right font-medium sm:pr-6">
+            <th class="px-4 py-3 text-right font-medium sm:pr-6">
               {{ t('history.actions') }}
             </th>
           </tr>
@@ -174,13 +174,15 @@
                 {{ t(item.paidAt ? 'prints.paid' : 'prints.unpaid') }}
               </UBadge>
             </td>
-            <td v-if="customerId" class="px-4 py-2.5 text-right sm:pr-6">
-              <UButton
-                v-if="item.status === 'DONE' && !item.archivedAt"
-                size="sm"
-                :label="t('history.repeat')"
-                @click="repeat(item.id)"
-              />
+            <td class="px-4 py-2.5 text-right sm:pr-6">
+              <ModulesPrintsWorkflowActions :print="item" @updated="refresh" @error="error = $event">
+                <UButton
+                  v-if="customerId && item.status === 'DONE' && !item.archivedAt"
+                  size="sm"
+                  :label="t('history.repeat')"
+                  @click="repeat(item.id)"
+                />
+              </ModulesPrintsWorkflowActions>
             </td>
           </tr>
         </tbody>
