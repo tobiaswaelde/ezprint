@@ -418,6 +418,7 @@ try {
             purchasePrice: price,
             expectedLifetimeHours: lifetime,
             printerIds: [printer.body.id],
+            alwaysUsed: type === 'BUILD_PLATE',
             note: '',
           }),
         },
@@ -426,6 +427,37 @@ try {
     ).body;
   const hotend = await component('Hotend', 'HOTEND', '100', '2000');
   const plate = await component('Plate', 'BUILD_PLATE', '60', '1200');
+  const filteredComponents = await json(
+    `/api/components?printerId=${printer.body.id}&type=BUILD_PLATE&search=Plate`,
+    {},
+    cookie,
+  );
+  check(
+    filteredComponents.response.ok &&
+      filteredComponents.body.total === 1 &&
+      filteredComponents.body.items[0].id === plate.id,
+    'Component selectors must filter by printer, type and search on the server.',
+  );
+  const defaultComponents = await json(
+    `/api/components?printerId=${printer.body.id}&alwaysUsed=true`,
+    {},
+    cookie,
+  );
+  check(
+    defaultComponents.body.total === 1 && defaultComponents.body.items[0].id === plate.id,
+    'Always-used component defaults must be filtered on the server.',
+  );
+  const incompatibleComponents = await json(
+    '/api/components?printerId=missing-printer&type=BUILD_PLATE',
+    {},
+    cookie,
+  );
+  check(
+    incompatibleComponents.body.total === 0,
+    'Component selectors must not include incompatible printers.',
+  );
+  const invalidComponentType = await json('/api/components?type=UNKNOWN', {}, cookie);
+  check(invalidComponentType.response.status === 422, 'Component selector filters must be validated.');
   const filament = (
     await json(
       '/api/filaments',

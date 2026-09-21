@@ -7,6 +7,7 @@ import {
   customerSchema,
   filamentSchema,
   listQuerySchema,
+  componentListQuerySchema,
   manufacturerSchema,
   printerSchema,
   settingsSchema,
@@ -162,8 +163,12 @@ export async function listResource(resource: Resource, query: Record<string, unk
     return { items: items.map(manufacturerDto), total, page: input.page, pageSize: input.pageSize };
   }
   if (resource === 'components') {
+    const filters = parseBody(componentListQuerySchema, query);
     const where = {
       ...archived,
+      ...(filters.type ? { type: filters.type } : {}),
+      ...(filters.printerId ? { printers: { some: { printerId: filters.printerId } } } : {}),
+      ...(filters.alwaysUsed !== undefined ? { alwaysUsed: filters.alwaysUsed } : {}),
       ...(input.search
         ? {
             OR: [

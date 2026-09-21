@@ -68,10 +68,11 @@ test('manufacturer inventory supplies printer, component, and filament dropdowns
   await toolbar.getByRole('button', { name: 'New' }).click();
   await dialog.getByRole('button', { name: labels.save }).click();
   await expect(dialog.getByText(labels.manufacturerRequired)).toBeVisible();
-  await dialog.getByLabel(labels.manufacturer).click();
+  await dialog.getByLabel(labels.manufacturer, { exact: true }).click();
+  await page.getByRole('combobox').fill('Manufacturer 099');
   await expect(page.getByRole('option', { name: 'Manufacturer 099' })).toBeVisible();
   await page.getByRole('option', { name: 'Manufacturer 099' }).click();
-  await expect(page.getByRole('option', { name: 'Manufacturer 099' })).toBeHidden();
+  await expect(page.getByRole('listbox')).toBeHidden();
   await dialog.getByLabel('Name').fill('Dropdown Printer');
   await expect(dialog.getByLabel('Name')).toHaveValue('Dropdown Printer');
   await dialog.getByRole('button', { name: labels.save }).click();
@@ -80,14 +81,14 @@ test('manufacturer inventory supplies printer, component, and filament dropdowns
     .getByRole('row')
     .filter({ has: page.getByRole('cell', { name: 'Dropdown Printer' }) });
   await printerRow.getByRole('button', { name: labels.edit }).click();
-  await expect(dialog.getByLabel(labels.manufacturer)).toContainText('Manufacturer 099');
+  await expect(dialog.getByLabel(labels.manufacturer, { exact: true })).toContainText('Manufacturer 099');
   await dialog.getByRole('button', { name: labels.cancel }).click();
   await expect(dialog).toBeHidden();
 
   await page.getByRole('link', { name: labels.components }).click();
   await expect(page).toHaveURL(/\/components$/);
   await toolbar.getByRole('button', { name: 'New' }).click();
-  await dialog.getByLabel(labels.manufacturer).click();
+  await dialog.getByLabel(labels.manufacturer, { exact: true }).click();
   await expect(page.getByRole('option', { name: 'Dropdown Maker' })).toBeVisible();
   await page.getByRole('option', { name: 'Dropdown Maker' }).click();
   await dialog.getByRole('button', { name: labels.cancel }).click();
@@ -99,7 +100,7 @@ test('manufacturer inventory supplies printer, component, and filament dropdowns
   await expect(dialog.getByLabel(/^Name/)).toHaveCount(0);
   const derivedName = dialog.getByText(/^Name:/);
   await expect(derivedName).toHaveText('Name: —');
-  await dialog.getByLabel(labels.manufacturer).click();
+  await dialog.getByLabel(labels.manufacturer, { exact: true }).click();
   await page.getByRole('option', { name: 'Dropdown Maker' }).click();
   await expect(page.getByRole('option', { name: 'Dropdown Maker' })).toBeHidden();
   await expect(derivedName).toHaveText('Name: Dropdown Maker');

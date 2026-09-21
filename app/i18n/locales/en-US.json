@@ -49,6 +49,8 @@
     "invalid": "Email or password is invalid."
   },
   "common": {
+    "loadMore": "Load more",
+    "createEntry": "Create {name}",
     "create": "Create",
     "add": "Add",
     "save": "Save",

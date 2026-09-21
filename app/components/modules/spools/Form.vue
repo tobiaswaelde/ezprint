@@ -11,14 +11,10 @@
       />
     </UFormField>
     <UFormField name="filamentId" :label="t('nav.filaments')" required>
-      <USelectMenu
+      <CommonEntitySelect
         v-model="form.filamentId"
-        :items="filaments"
-        value-key="id"
-        label-key="name"
-        class="w-full"
-        icon="i-tabler-circle-dashed"
-        :disabled="editing"
+        resource="filaments"
+        :disabled="editing || Boolean(initialFilamentId)"
       />
     </UFormField>
     <UFormField name="purchasePrice" :label="t('master.purchasePrice')" required>
@@ -66,19 +62,17 @@
 
 <script setup lang="ts">
 import { spoolSchema } from '#shared/schemas/spools';
-import type { MasterDataListItem, PaginatedResponse } from '#shared/types/master-data';
 import type { SpoolDto } from '#shared/types/spools';
 
-const props = defineProps<{ value?: SpoolDto }>();
+const props = defineProps<{ value?: SpoolDto; initialFilamentId?: string }>();
 const emit = defineEmits<{ saved: [spool: SpoolDto] }>();
 const { t } = useI18n();
 const editing = computed(() => Boolean(props.value));
 const saving = ref(false);
 const error = ref('');
-const filaments = ref<MasterDataListItem[]>([]);
 const form = reactive({
   code: props.value?.code ?? '',
-  filamentId: props.value?.filamentId ?? '',
+  filamentId: props.value?.filamentId ?? props.initialFilamentId ?? '',
   purchasePrice: props.value?.purchasePrice ?? '0',
   initialNetWeightGrams: props.value?.initialNetWeightGrams ?? '1000',
   location: props.value?.location ?? '',
@@ -103,16 +97,4 @@ async function save() {
     saving.value = false;
   }
 }
-
-onMounted(async () => {
-  try {
-    filaments.value = (
-      await $fetch<PaginatedResponse<MasterDataListItem>>('/api/filaments', {
-        query: { pageSize: 100, includeArchived: editing.value },
-      })
-    ).items;
-  } catch (reason) {
-    error.value = reason instanceof Error ? reason.message : String(reason);
-  }
-});
 </script>

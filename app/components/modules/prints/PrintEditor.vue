@@ -118,34 +118,19 @@
               ><CommonSeriesSelect v-model="form.seriesId" @customer="form.customerId = $event"
             /></UFormField>
             <UFormField name="customerId" :label="t('nav.customers')"
-              ><USelectMenu
-                v-model="form.customerId"
-                class="w-full"
-                icon="i-tabler-user"
-                :aria-label="t('nav.customers')"
-                :search-input="{ placeholder: t('common.search') }"
-                value-key="value"
-                :items="customerOptions"
+              ><CommonEntitySelect v-model="form.customerId" resource="customers" nullable
             /></UFormField>
             <UFormField name="printerId" :label="t('nav.printers')" required
-              ><USelectMenu
-                v-model="form.printerId"
-                class="w-full"
-                icon="i-tabler-printer"
-                :aria-label="t('nav.printers')"
-                :search-input="{ placeholder: t('common.search') }"
-                value-key="value"
-                :items="printerOptions"
+              ><CommonEntitySelect v-model="form.printerId" resource="printers"
             /></UFormField>
             <UFormField name="buildPlateId" :label="t('master.buildPlate')" required
-              ><USelectMenu
+              ><CommonEntitySelect
                 v-model="form.buildPlateId"
-                class="w-full"
-                icon="i-tabler-square"
+                resource="components"
+                :query="{ printerId: form.printerId, type: 'BUILD_PLATE' }"
+                :defaults="{ type: 'BUILD_PLATE', printerIds: [form.printerId] }"
+                :disabled="!form.printerId"
                 :aria-label="t('master.buildPlate')"
-                :search-input="{ placeholder: t('common.search') }"
-                value-key="value"
-                :items="buildPlateOptions"
             /></UFormField>
             <UFormField name="notes" :label="t('master.note')" class="md:col-span-2"
               ><UTextarea v-model="form.notes" class="w-full" icon="i-tabler-notes"
@@ -166,14 +151,13 @@
               class="grid items-start gap-3 md:grid-cols-[1fr_8rem_8rem_auto]"
             >
               <UFormField :name="`hotends.${index}.componentId`" :label="t('master.hotend')" required
-                ><USelectMenu
+                ><CommonEntitySelect
                   v-model="hotend.componentId"
-                  class="w-full"
-                  icon="i-tabler-flame"
+                  resource="components"
+                  :query="{ printerId: form.printerId, type: 'HOTEND' }"
+                  :defaults="{ type: 'HOTEND', printerIds: [form.printerId] }"
+                  :disabled="!form.printerId"
                   :aria-label="t('master.hotend')"
-                  :search-input="{ placeholder: t('common.search') }"
-                  value-key="value"
-                  :items="hotendOptions"
               /></UFormField>
               <UFormField :name="`hotends.${index}.hours`" :label="t('prints.hours')"
                 ><UInput
@@ -223,13 +207,14 @@
           >
           <div class="grid gap-4 md:grid-cols-2">
             <UFormField name="otherComponentIds" :label="t('prints.otherComponents')"
-              ><USelectMenu
+              ><CommonEntitySelect
                 v-model="form.otherComponentIds"
-                class="w-full"
-                icon="i-tabler-components"
+                :aria-label="t('prints.otherComponents')"
+                resource="components"
                 multiple
-                value-key="value"
-                :items="otherOptions"
+                :query="{ printerId: form.printerId, type: 'OTHER' }"
+                :defaults="{ type: 'OTHER', printerIds: [form.printerId] }"
+                :disabled="!form.printerId"
             /></UFormField>
           </div>
         </UCard>
@@ -250,7 +235,7 @@
               "
             >
               <UFormField :name="`filaments.${index}.filamentId`" :label="t('nav.filaments')" required
-                ><CommonFilamentSelect v-model="filament.filamentId" class="w-full" :items="filamentOptions"
+                ><CommonFilamentSelect v-model="filament.filamentId" class="w-full"
               /></UFormField>
               <UFormField
                 v-if="spoolManagementEnabled"
@@ -392,7 +377,6 @@
 import type { PrintCalculationResult } from '#shared/domain/print-calculation';
 import { printDraftFormSchema, printStatuses } from '#shared/schemas/prints';
 import type { PrintStatus } from '#shared/schemas/prints';
-import type { MasterDataListItem, PaginatedResponse } from '#shared/types/master-data';
 import type { PrintJobDto } from '#shared/types/prints';
 
 const emit = defineEmits<{ title: [value: string] }>();
@@ -411,10 +395,6 @@ const previewPending = ref(false);
 const error = ref('');
 const costs = ref<PrintCalculationResult | null>(null);
 const editorForm = ref<{ submit: () => Promise<void> } | null>(null);
-const customers = ref<MasterDataListItem[]>([]);
-const printers = ref<MasterDataListItem[]>([]);
-const components = ref<MasterDataListItem[]>([]);
-const filaments = ref<MasterDataListItem[]>([]);
 let previewTimer: ReturnType<typeof setTimeout> | undefined;
 let hydrating = true;
 const selectedStatus = ref<PrintStatus>('DRAFT');
@@ -440,33 +420,6 @@ const form = reactive({
   filaments: [{ filamentId: '', spoolId: undefined as string | undefined, usedGrams: '1' }],
   notes: '',
 });
-
-const options = (values: MasterDataListItem[]) =>
-  values.map((item) => ({ label: item.name, value: item.id }));
-const customerOptions = computed(() => [{ label: '—', value: null }, ...options(customers.value)]);
-const printerOptions = computed(() => options(printers.value));
-const compatibleComponents = computed(() =>
-  components.value.filter(
-    (item) => Array.isArray(item.printerIds) && item.printerIds.includes(form.printerId),
-  ),
-);
-const buildPlateOptions = computed(() =>
-  options(compatibleComponents.value.filter((item) => item.type === 'BUILD_PLATE')),
-);
-const hotendOptions = computed(() =>
-  options(compatibleComponents.value.filter((item) => item.type === 'HOTEND')),
-);
-const otherOptions = computed(() =>
-  options(compatibleComponents.value.filter((item) => item.type === 'OTHER')),
-);
-const filamentOptions = computed(() =>
-  filaments.value.map((item) => ({
-    label: item.name,
-    value: item.id,
-    colorName: String(item.colorName),
-    colorHex: String(item.colorHex),
-  })),
-);
 
 function payload() {
   return {
@@ -530,16 +483,6 @@ function hydrate(value: PrintJobDto) {
 
 async function load() {
   await Promise.all([loadFeatures(), loadSpoolManagement()]);
-  const [customerResponse, printerResponse, componentResponse, filamentResponse] = await Promise.all([
-    $fetch<PaginatedResponse<MasterDataListItem>>('/api/customers', { query: { pageSize: 100 } }),
-    $fetch<PaginatedResponse<MasterDataListItem>>('/api/printers', { query: { pageSize: 100 } }),
-    $fetch<PaginatedResponse<MasterDataListItem>>('/api/components', { query: { pageSize: 100 } }),
-    $fetch<PaginatedResponse<MasterDataListItem>>('/api/filaments', { query: { pageSize: 100 } }),
-  ]);
-  customers.value = customerResponse.items;
-  printers.value = printerResponse.items;
-  components.value = componentResponse.items;
-  filaments.value = filamentResponse.items;
   if (props.printId) hydrate(await $fetch<PrintJobDto>(`/api/prints/${props.printId}`));
   hydrating = false;
   loading.value = false;
@@ -552,13 +495,25 @@ function addFilament() {
   form.filaments.push({ filamentId: '', spoolId: undefined as string | undefined, usedGrams: '1' });
 }
 
-function applyComponentDefaults() {
-  const defaults = getPrintComponentDefaults(components.value, form.printerId);
-  form.buildPlateId = defaults.buildPlateId;
-  form.hotends = defaults.hotendIds.length
-    ? defaults.hotendIds.map((componentId) => ({ componentId, hours: 1, minutes: 0 }))
-    : [{ componentId: '', hours: 1, minutes: 0 }];
-  form.otherComponentIds = defaults.otherComponentIds;
+async function applyComponentDefaults() {
+  const printerId = form.printerId;
+  form.buildPlateId = '';
+  form.hotends = [{ componentId: '', hours: 1, minutes: 0 }];
+  form.otherComponentIds = [];
+  let defaults;
+  try {
+    defaults = await loadPrintComponentDefaults(printerId);
+  } catch (reason) {
+    if (form.printerId === printerId) error.value = String(reason);
+    return;
+  }
+  if (form.printerId !== printerId) return;
+  form.buildPlateId ||= defaults.buildPlateId;
+  if (!form.hotends.some((entry) => entry.componentId))
+    form.hotends = defaults.hotendIds.length
+      ? defaults.hotendIds.map((componentId) => ({ componentId, hours: 1, minutes: 0 }))
+      : [{ componentId: '', hours: 1, minutes: 0 }];
+  if (!form.otherComponentIds.length) form.otherComponentIds = defaults.otherComponentIds;
 }
 
 async function preview() {

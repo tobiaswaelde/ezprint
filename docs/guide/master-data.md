@@ -32,3 +32,13 @@ Printer/component cost per hour and filament cost per gram update in the form be
 uses the selected application language and currency; the HTTP API serializes decimal values as strings.
 Printer and filament forms require a manufacturer from the shared inventory; component manufacturers remain
 optional.
+
+Database-backed selection fields include a **+** button to create the related record without leaving the current
+form. Saving refreshes the options and selects the new record; multiple selections keep their existing entries.
+Canceling keeps the parent form and selection unchanged. Component and spool creation from a print retains the
+current printer/type or filament context.
+
+These fields search the server after a short typing pause and load 25 matches at a time. Choose **Load more**
+to continue through the result pages. Selected names remain visible even when they are outside the search results.
+This also applies to entity filters in print lists and history. Fixed choices such as status, language, and remote
+printer configuration do not offer local record creation.

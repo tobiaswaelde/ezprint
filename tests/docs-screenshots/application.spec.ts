@@ -66,6 +66,7 @@ async function captureSignIn(browser: Browser) {
 async function selectOption(page: Page, label: string, option: string) {
   await page.getByLabel(label, { exact: true }).click();
   await page.getByRole('option', { name: option, exact: true }).click();
+  await expect(page.getByRole('listbox')).toBeHidden();
 }
 
 let fake: Awaited<ReturnType<typeof startFakeIntegrations>>;
@@ -373,7 +374,7 @@ test('regenerates every application screenshot used by the documentation', async
   await dialog.getByLabel('Hours', { exact: true }).fill('6');
   await dialog.getByLabel('Minutes', { exact: true }).fill('30');
   await dialog.getByRole('button', { name: 'Next' }).click();
-  await dialog.getByRole('button', { name: 'Show popup' }).click();
+  await dialog.getByRole('button', { name: 'Other compatible components', exact: true }).click();
   await page.getByRole('option', { name: 'Heated enclosure', exact: true }).click();
   await page.keyboard.press('Escape');
   await selectOption(page, 'Filaments', 'Polymaker PLA - Teal');

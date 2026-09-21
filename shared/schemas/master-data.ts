@@ -122,3 +122,9 @@ export const listQuerySchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(100).default(25),
   includeArchived: queryBoolean,
 });
+
+export const componentListQuerySchema = listQuerySchema.extend({
+  type: z.enum(['HOTEND', 'BUILD_PLATE', 'OTHER']).optional(),
+  printerId: z.string().trim().min(1).max(200).optional(),
+  alwaysUsed: queryBoolean.optional(),
+});
