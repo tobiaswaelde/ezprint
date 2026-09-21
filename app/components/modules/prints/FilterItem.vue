@@ -28,7 +28,17 @@
         (operator: string | number) => update({ operator: String(operator) as FilteringFieldOperator })
       "
     />
+    <CommonEntitySelect
+      v-if="entityResource"
+      :resource="entityResource"
+      multiple
+      :query="{ includeArchived: true }"
+      :aria-label="field.label"
+      :model-value="Array.isArray(filter.value) ? filter.value.map(String) : []"
+      @update:model-value="(value: string[]) => update({ value })"
+    />
     <USelectMenu
+      v-else
       class="w-48"
       size="sm"
       value-key="value"
@@ -57,6 +67,12 @@ const props = defineProps<{
   remove: () => void;
   update: (patch: Partial<FilteringField>) => void;
 }>();
+const entityResource = computed(
+  () =>
+    (({ printerId: 'printers', customerId: 'customers', seriesId: 'series' }) as const)[
+      props.filter.field as 'printerId' | 'customerId' | 'seriesId'
+    ],
+);
 const { t } = useI18n();
 const operators = [
   { value: 'in', label: '∈' },

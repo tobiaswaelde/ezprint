@@ -58,6 +58,8 @@ session cookie in its cookie jar. The committed collection contains no credentia
 
 ## Lists and input models
 
+Component lists additionally accept `type=HOTEND|BUILD_PLATE|OTHER`, `printerId`, and `alwaysUsed=true|false`; filters apply before pagination and counting.
+
 Inventory lists accept `search`, one-based `page`, `pageSize` from 1–100, and `includeArchived=true|false`. Print
 lists also accept `status=DRAFT|PRINTING|PRINTED|SHIPPED|DONE` and `customerId`. Responses contain `items`, `total`, `page`, and
 `pageSize`.

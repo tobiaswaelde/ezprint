@@ -24,18 +24,7 @@
           </ul>
         </div>
         <UFormField :label="t('nav.printers')"
-          ><USelectMenu
-            v-model="printerId"
-            :items="
-              status.printers.map((item: { id: string; name: string }) => ({
-                label: item.name,
-                value: item.id,
-              }))
-            "
-            value-key="value"
-            :aria-label="t('nav.printers')"
-            :search-input="{ placeholder: t('common.search') }"
-            class="w-full"
+          ><CommonEntitySelect v-model="printerId" resource="printers"
         /></UFormField>
         <div v-if="selected" class="space-y-3">
           <UFormField :label="t('integration.remotePrinter')"
@@ -87,14 +76,10 @@
                   t('integration.mappingWarning')
                 }}</span>
               </p>
-              <USelectMenu
+              <CommonEntitySelect
                 v-model="trayChoices[tray.slot]"
-                :items="
-                  spools.map((item: { id: string; code: string }) => ({ label: item.code, value: item.id }))
-                "
-                value-key="value"
+                resource="spools"
                 :aria-label="`${t('integration.slot')} ${tray.slot}`"
-                :search-input="{ placeholder: t('common.search') }"
               />
               <UButton
                 :label="t('integration.map')"
@@ -186,7 +171,6 @@
 <script setup lang="ts">
 import type { BambuLog, BambuStatus } from '#shared/types/integrations';
 import type { PrintJobDto } from '#shared/types/prints';
-import type { SpoolDto } from '#shared/types/spools';
 const { t } = useI18n();
 const { enabled: spoolManagementEnabled, load: loadSpoolManagement } = useSpoolManagement();
 const route = useRoute();
@@ -194,7 +178,6 @@ const printId = typeof route.query.printId === 'string' ? route.query.printId : 
 const printerId = ref(typeof route.query.printerId === 'string' ? route.query.printerId : '');
 const status = ref<BambuStatus | null>(null);
 const print = ref<PrintJobDto | null>(null);
-const spools = ref<SpoolDto[]>([]);
 const trayChoices = reactive<Record<string, string>>({});
 const remotePrinter = ref(0);
 const error = ref('');
@@ -205,6 +188,9 @@ const actualSeconds = ref<string | number>('');
 const actualGrams = reactive<Record<string, string>>({});
 const failureReason = ref('');
 const selected = computed(() => status.value?.printers.find((item) => item.id === printerId.value));
+watch(printerId, (value, old) => {
+  if (old && value !== old) void run(refresh);
+});
 watch(selected, (item) => {
   remotePrinter.value = item?.remoteId ?? 0;
 });
@@ -220,7 +206,9 @@ async function run(fn: () => Promise<void>) {
   }
 }
 async function refresh() {
-  status.value = await $fetch<BambuStatus>('/api/integrations/bambubuddy', { query: { printId } });
+  status.value = await $fetch<BambuStatus>('/api/integrations/bambubuddy', {
+    query: { printId, printerId: printerId.value || undefined },
+  });
   printerId.value ||= status.value.printers[0]?.id ?? '';
   const link = status.value.link;
   if (link) {
@@ -267,8 +255,7 @@ async function importResult() {
 onMounted(() =>
   run(async () => {
     if (printId) print.value = await $fetch<PrintJobDto>(`/api/prints/${printId}`);
-    if (await loadSpoolManagement())
-      spools.value = (await $fetch<{ items: SpoolDto[] }>('/api/spools', { query: { pageSize: 100 } })).items;
+    await loadSpoolManagement();
     await refresh();
   }),
 );

@@ -15,13 +15,12 @@
         ><USelect v-model="filters.outcome" :items="outcomeOptions" class="w-full"
       /></UFormField>
       <UFormField :label="t('nav.printers')"
-        ><USelectMenu
-          v-model="filters.printerId"
-          value-key="value"
-          :items="printerOptions"
-          :aria-label="t('nav.printers')"
-          :search-input="{ placeholder: t('common.search') }"
-          class="w-full"
+        ><CommonEntitySelect
+          resource="printers"
+          nullable
+          :model-value="filters.printerId === 'ALL' ? null : filters.printerId"
+          :query="{ includeArchived: true }"
+          @update:model-value="filters.printerId = $event || 'ALL'"
       /></UFormField>
       <UCheckbox v-model="filters.includeArchived" :label="t('spool.includeArchived')" />
     </div>
@@ -156,7 +155,7 @@
 import { printStatuses } from '#shared/schemas/prints';
 import type { PrintJobDto } from '#shared/types/prints';
 import type { PrintSummary } from '#shared/domain/print-summary';
-import type { MasterDataListItem, PaginatedResponse } from '#shared/types/master-data';
+import type { PaginatedResponse } from '#shared/types/master-data';
 const props = withDefaults(defineProps<{ customerId?: string; seriesId?: string; showSummary?: boolean }>(), {
   customerId: undefined,
   seriesId: undefined,
@@ -179,11 +178,6 @@ const loading = ref(true);
 const result = ref<(PaginatedResponse<PrintJobDto> & { summary: PrintSummary; currency: string }) | null>(
   null,
 );
-const printers = ref<MasterDataListItem[]>([]);
-const printerOptions = computed(() => [
-  { label: t('history.allPrinters'), value: 'ALL' },
-  ...printers.value.map((item) => ({ label: item.name, value: item.id })),
-]);
 const statusOptions = computed(() => [
   { label: t('prints.allStatuses'), value: 'ALL' },
   ...printStatuses.map((value) => ({ label: t(`prints.${value.toLowerCase()}`), value })),
@@ -248,14 +242,5 @@ watch(
   { deep: true },
 );
 watch(page, refresh);
-onMounted(async () => {
-  await refresh();
-  try {
-    printers.value = (
-      await $fetch<PaginatedResponse<MasterDataListItem>>('/api/printers', { query: { pageSize: 100 } })
-    ).items;
-  } catch (reason) {
-    error.value = String(reason);
-  }
-});
+onMounted(refresh);
 </script>

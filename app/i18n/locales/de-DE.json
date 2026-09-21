@@ -49,6 +49,8 @@
     "invalid": "E-Mail oder Passwort ist ungültig."
   },
   "common": {
+    "loadMore": "Mehr laden",
+    "createEntry": "{name} erstellen",
     "create": "Erstellen",
     "add": "Hinzufügen",
     "save": "Speichern",

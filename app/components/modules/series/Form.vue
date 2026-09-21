@@ -5,14 +5,7 @@
       ><UInput v-model="form.name" class="w-full" icon="i-tabler-tag" autofocus
     /></UFormField>
     <UFormField name="customerId" :label="t('nav.customers')"
-      ><USelectMenu
-        v-model="form.customerId"
-        value-key="value"
-        :items="customers"
-        :aria-label="t('nav.customers')"
-        :search-input="{ placeholder: t('common.search') }"
-        class="w-full"
-        icon="i-tabler-user"
+      ><CommonEntitySelect v-model="form.customerId" resource="customers" nullable
     /></UFormField>
     <UFormField name="targetQuantity" :label="t('series.target')"
       ><UInput
@@ -40,16 +33,14 @@
 <script setup lang="ts">
 import { seriesSchema } from '#shared/schemas/series';
 import type { PrintSeriesDto } from '#shared/types/series';
-import type { MasterDataListItem, PaginatedResponse } from '#shared/types/master-data';
-const props = defineProps<{ value?: PrintSeriesDto }>();
+const props = defineProps<{ value?: PrintSeriesDto; initialCustomerId?: string | null }>();
 const emit = defineEmits<{ saved: [series: PrintSeriesDto] }>();
 const { t } = useI18n();
 const error = ref('');
 const saving = ref(false);
-const customers = ref<Array<{ label: string; value: string | null }>>([{ label: '—', value: null }]);
 const form = reactive({
   name: props.value?.name ?? '',
-  customerId: props.value?.customerId ?? null,
+  customerId: props.value?.customerId ?? props.initialCustomerId ?? null,
   targetQuantity: props.value?.targetQuantity?.toString() ?? '',
   autoComplete: props.value?.autoComplete ?? true,
   notes: props.value?.notes ?? '',
@@ -71,16 +62,4 @@ async function save() {
     saving.value = false;
   }
 }
-onMounted(async () => {
-  try {
-    const items = (
-      await $fetch<PaginatedResponse<MasterDataListItem>>('/api/customers', { query: { pageSize: 100 } })
-    ).items;
-    customers.value.push(...items.map((item) => ({ label: item.name, value: item.id })));
-    if (props.value?.customer && !items.some((item) => item.id === props.value?.customerId))
-      customers.value.push({ label: props.value.customer.name, value: props.value.customer.id });
-  } catch (reason) {
-    error.value = String(reason);
-  }
-});
 </script>

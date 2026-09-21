@@ -220,7 +220,7 @@ import {
 } from '@querry-kit/nuxt-ui/types';
 import { printStatuses } from '#shared/schemas/prints';
 import type { PrintSummary } from '#shared/domain/print-summary';
-import type { CustomerDto, MasterDataListItem, PaginatedResponse } from '#shared/types/master-data';
+import type { PaginatedResponse } from '#shared/types/master-data';
 import type { PrintJobDto } from '#shared/types/prints';
 
 const props = defineProps<{
@@ -244,9 +244,6 @@ const summary = ref<PrintSummary | null>(null);
 const summaryCurrency = ref('EUR');
 const createOpen = ref(route.query.create === 'true');
 const search = ref(typeof route.query.search === 'string' ? route.query.search : '');
-const printers = ref<MasterDataListItem[]>([]);
-const customers = ref<CustomerDto[]>([]);
-const series = ref<Array<{ id: string; name: string }>>([]);
 let request = 0;
 let debounceTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -291,7 +288,7 @@ const filterFields = computed<FilterField[]>(() => {
       value: 'printerId',
       label: t('nav.printers'),
       type: FilterFieldType.Enum,
-      values: printers.value.map((item) => ({ value: item.id, label: item.name })),
+      values: [],
     },
     ...(!props.customerId
       ? ([
@@ -299,7 +296,7 @@ const filterFields = computed<FilterField[]>(() => {
             value: 'customerId',
             label: t('nav.customers'),
             type: FilterFieldType.Enum,
-            values: customers.value.map((item) => ({ value: item.id, label: item.name })),
+            values: [],
           },
         ] satisfies FilterField[])
       : []),
@@ -309,7 +306,7 @@ const filterFields = computed<FilterField[]>(() => {
             value: 'seriesId',
             label: t('nav.series'),
             type: FilterFieldType.Enum,
-            values: series.value.map((item) => ({ value: item.id, label: item.name })),
+            values: [],
           },
         ] satisfies FilterField[])
       : []),
@@ -369,35 +366,6 @@ function openCreate() {
   createOpen.value = true;
 }
 
-async function loadAll<T extends { id: string }>(endpoint: string): Promise<T[]> {
-  const first = await $fetch<PaginatedResponse<T>>(endpoint, {
-    query: { page: 1, pageSize: 100, includeArchived: true },
-  });
-  const remaining = await Promise.all(
-    Array.from({ length: Math.max(0, Math.ceil(first.total / first.pageSize) - 1) }, (_, index) =>
-      $fetch<PaginatedResponse<T>>(endpoint, {
-        query: { page: index + 2, pageSize: 100, includeArchived: true },
-      }),
-    ),
-  );
-  return [first, ...remaining].flatMap((response) => response.items);
-}
-
-async function loadOptions() {
-  try {
-    const [printerItems, customerItems, seriesItems] = await Promise.all([
-      loadAll<MasterDataListItem>('/api/printers'),
-      props.customerId ? Promise.resolve([]) : loadAll<CustomerDto>('/api/customers'),
-      printSeriesEnabled.value ? loadAll<{ id: string; name: string }>('/api/series') : Promise.resolve([]),
-    ]);
-    printers.value = printerItems;
-    customers.value = customerItems;
-    series.value = seriesItems;
-  } catch (reason) {
-    error.value = reason instanceof Error ? reason.message : String(reason);
-  }
-}
-
 async function refresh() {
   const current = ++request;
   loading.value = true;
@@ -449,6 +417,6 @@ onMounted(async () => {
       ...filtering.value,
       filters: filtering.value.filters.filter((item) => item.field !== 'seriesId'),
     };
-  await Promise.all([refresh(), loadOptions()]);
+  await refresh();
 });
 </script>
