@@ -35,7 +35,7 @@ export default defineNitroPlugin((nitro) => {
           orderBy: { syncedAt: 'asc' },
           take: 5,
         });
-        for (const link of links) await syncBambuPrint(link.printJobId);
+        for (const link of links) await syncBambuPrint(link.printJobId, link.partId);
       }
     } catch {
       /* Errors remain in integration state; polling must not crash manual workflows. */

@@ -565,6 +565,9 @@
     "attach": "Attach this record",
     "remoteGrams": "Reported total filament",
     "pendingResult": "Outcome remains pending. Resolve cancelled or ambiguous jobs manually in the print editor.",
-    "confirmResult": "Confirm actual values and import outcome"
+    "confirmResult": "Confirm actual values and import outcome",
+    "manualPart": "No linked run: enter actual values manually, or attach a Bambuddy run for this part.",
+    "partsResultHelp": "Link runs to their print parts, check every part’s actual values, then confirm the combined result. A failed linked run requires a failed result.",
+    "linkedPartLocked": "A part linked to a Bambuddy run cannot be removed or assigned to another printer. Duplicate the print to plan a new run."
   }
 }

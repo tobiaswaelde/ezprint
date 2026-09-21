@@ -54,7 +54,7 @@ Each optional `PrintOutcome` has a unique print reference, status, duration, rea
 
 Spoolman links retain unique nullable external IDs on manufacturers, filaments, and spools. A spool stores one `stockAuthority`, nullable remote balance, remote state, last successful sync, and safe error code. Native balances remain append-only ledger sums; linked balances remain remote mirrors. `SpoolSyncOperation` uniquely identifies each outcome usage/correction and records pending, applied, failed, or uncertain dispatch state. No remote call occurs inside the outcome transaction.
 
-Printers retain a unique nullable Bambuddy ID and sanitized cached status. `BambuTrayMapping` has one explicit spool per printer/slot. `BambuPrintLink` uniquely binds one remote print-log ID to one local print and stores validated cached data plus confirmed import metadata. Imported outcome metadata is persisted in the same transaction as its outcome and native stock deduction. Completed calculations do not depend on either remote service.
+Printers retain a unique nullable Bambuddy ID and sanitized cached status. `BambuTrayMapping` has one explicit spool per printer/slot. `BambuPrintLink` uniquely binds one remote print-log ID to one local `PrintPart` and stores validated cached data plus confirmed import metadata. Imported outcome metadata is persisted in the same transaction as its outcome and native stock deduction. Completed calculations do not depend on either remote service.
 
 `PrintPart` has a stable ID, unique position within its parent, machine duration, and frozen `snapshotJson`.
 Usage rows reference both their parent print and part. New planned snapshots use version `4`, including part IDs
@@ -62,3 +62,8 @@ on breakdown lines so repeated component/spool sources remain distinct. Parent t
 The parts migration creates one part per existing print and preserves usage IDs, old snapshot versions, costs,
 outcomes, and Bambuddy links. A migrated part with no `snapshotJson` reads the unchanged parent snapshot.
 Multipart actuals store per-part durations in the outcome input JSON and use `actual-2` cost snapshots.
+
+The Bambuddy part migration retains each existing link's ID, cache, and import metadata and associates it with
+the historical print's first part. `printJobId` remains indexed for atomic parent-outcome operations. A linked
+part cannot change printer or disappear during draft editing. Per-part imported flags determine which
+Spoolman consumption operations are suppressed during outcomes and corrections.

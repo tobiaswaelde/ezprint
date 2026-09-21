@@ -1,4 +1,7 @@
-import { randomUUID } from 'node:crypto';
+import { bambuLogSchema, terminalOutcome } from '../utils/integrations/bambu-contract';
+import type { BambuPartPreview } from '#shared/schemas/integrations';
+import type { PrintOutcomeInput } from '#shared/schemas/print-outcomes';
+import { randomUUID, createHash } from 'node:crypto';
 import { bookPrintStock } from './spoolman';
 import type { PrintJobDto } from '#shared/types/prints';
 import { componentSchema } from '#shared/schemas/master-data';
@@ -28,7 +31,7 @@ import { requireFeature } from '../utils/features';
 type Transaction = Prisma.TransactionClient;
 const printInclude = {
   parts: { include: { printer: true }, orderBy: { position: 'asc' as const } },
-  bambuLink: true,
+  bambuLinks: true,
   customer: true,
   printer: true,
   componentUsages: { orderBy: { createdAt: 'asc' as const } },
@@ -167,6 +170,7 @@ function printDto(value: PrintWithSnapshot): PrintJobDto {
       const snapshot = snapshotDto(part.snapshotJson ? JSON.parse(part.snapshotJson) : value.snapshot);
       return {
         id: part.id,
+        bambuLinked: value.bambuLinks.some((link) => link.partId === part.id),
         position: part.position,
         printerId: part.printerId,
         printer: { id: part.printer.id, name: part.printer.name },
@@ -446,6 +450,13 @@ async function resolvePrintParts(
       data,
     });
   }
+  if (
+    existing?.bambuLinks.some((link) => {
+      const next = parts.find((part) => part.id === link.partId);
+      return !next || next.printerId !== existing.parts.find((part) => part.id === link.partId)?.printerId;
+    })
+  )
+    apiError(409, 'INTEGRATION_CONFLICT', 'errors.integrationConflict');
   const result = aggregatePrintPartCosts(
     parts.map((part) => ({ id: part.id, costs: part.data.result })),
     input.quantity,
@@ -798,7 +809,57 @@ export async function assertUnreferenced(
   if (count) apiError(409, 'RESOURCE_REFERENCED', 'errors.resourceReferenced');
 }
 
-export async function recordPrintOutcome(id: string, input: unknown, externalAlreadyTracked = false) {
+function validateBambuOutcome(
+  existing: PrintWithSnapshot,
+  source: PrintJobDto,
+  input: PrintOutcomeInput,
+  previews?: BambuPartPreview[],
+) {
+  const logs = existing.bambuLinks.map((link) => ({
+    link,
+    log: bambuLogSchema.parse(JSON.parse(link.cachedJson)),
+  }));
+  if (
+    logs.some(({ log }) => terminalOutcome(log.status, log.completed_at) === 'FAILED') &&
+    input.status !== 'FAILED'
+  )
+    apiError(409, 'INTEGRATION_CONFLICT', 'errors.integrationConflict');
+  if (!previews) return;
+  if (
+    !logs.length ||
+    previews.length !== logs.length ||
+    new Set(previews.map((preview) => preview.partId)).size !== logs.length
+  )
+    apiError(409, 'INTEGRATION_CONFLICT', 'errors.integrationConflict');
+  const normalized = JSON.stringify(input);
+  for (const { link, log } of logs) {
+    const preview = previews.find((entry) => entry.partId === link.partId);
+    const terminal = terminalOutcome(log.status, log.completed_at);
+    if (
+      !preview ||
+      preview.previewHash !== createHash('sha256').update(link.cachedJson).digest('hex') ||
+      link.error ||
+      !terminal ||
+      (link.importedJson && link.importedJson !== normalized) ||
+      (existing.outcome && !link.importedAt)
+    )
+      apiError(409, 'INTEGRATION_CONFLICT', 'errors.integrationConflict');
+    const part = source.parts.find((entry) => entry.id === link.partId)!;
+    const duration =
+      input.parts?.find((entry) => entry.partId === link.partId)?.durationSeconds ??
+      (source.parts.length === 1 ? input.durationSeconds : undefined);
+    const grams = input.filaments
+      .filter((line) => part.filamentUsages.some((usage) => usage.id === line.usageId))
+      .reduce((total, line) => total.plus(line.usedGrams), new Decimal(0));
+    if (
+      (log.duration_seconds != null && log.duration_seconds !== duration) ||
+      (log.filament_used_grams != null && !grams.eq(String(log.filament_used_grams)))
+    )
+      apiError(409, 'INTEGRATION_CONFLICT', 'errors.integrationConflict');
+  }
+}
+
+export async function recordPrintOutcome(id: string, input: unknown, previews?: BambuPartPreview[]) {
   const parsed = parseBody(printOutcomeSchema, input);
   parsed.filaments.sort((a, b) => a.usageId.localeCompare(b.usageId));
   parsed.parts?.sort((a, b) => a.partId.localeCompare(b.partId));
@@ -807,12 +868,13 @@ export async function recordPrintOutcome(id: string, input: unknown, externalAlr
     if (existing.status !== 'DONE' || existing.archivedAt || !existing.snapshot)
       apiError(409, 'OUTCOME_NOT_ALLOWED', 'errors.outcomeNotAllowed');
     const inputSnapshot = JSON.stringify(parsed);
+    const source = printDto(existing);
+    validateBambuOutcome(existing, source, parsed, previews);
     if (existing.outcome) {
       if (existing.outcome.inputSnapshot !== inputSnapshot)
         apiError(409, 'OUTCOME_IMMUTABLE', 'errors.outcomeImmutable');
       return printDto(existing);
     }
-    const source = printDto(existing);
     if (
       parsed.filaments.length !== source.filamentUsages.length ||
       parsed.filaments.some((line) => !source.filamentUsages.some((usage) => usage.id === line.usageId))
@@ -864,12 +926,12 @@ export async function recordPrintOutcome(id: string, input: unknown, externalAlr
             printUsageId: usage.id,
             operationKey: `outcome:${id}:${usage.id}`,
           },
-          externalAlreadyTracked,
+          !!previews?.some((preview) => preview.partId === usage.partId),
         );
       }
-    if (externalAlreadyTracked && existing.bambuLink)
-      await transaction.bambuPrintLink.update({
-        where: { id: existing.bambuLink.id },
+    if (previews)
+      await transaction.bambuPrintLink.updateMany({
+        where: { printJobId: id },
         data: { importedAt: new Date(), importedJson: inputSnapshot },
       });
     await refreshSeriesProgress(transaction, existing.seriesId);
@@ -886,6 +948,7 @@ export async function correctPrintOutcome(id: string, input: unknown) {
     if (existing.status !== 'DONE' || existing.archivedAt || !existing.outcome || !existing.snapshot)
       apiError(409, 'OUTCOME_NOT_ALLOWED', 'errors.outcomeNotAllowed');
     const source = printDto(existing);
+    validateBambuOutcome(existing, source, parsed);
     const inputSnapshot = JSON.stringify(parsed);
     const previousOperation = await transaction.printOutcomeCorrection.findUnique({
       where: { operationKey },
@@ -953,7 +1016,7 @@ export async function correctPrintOutcome(id: string, input: unknown) {
               printUsageId: usage.id,
               operationKey: `correction:${operationKey}:${usage.id}`,
             },
-            !!existing.bambuLink?.importedAt,
+            !!existing.bambuLinks.find((link) => link.partId === usage.partId)?.importedAt,
           );
       }
     await transaction.printOutcome.update({

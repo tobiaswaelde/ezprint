@@ -3,6 +3,7 @@ import type { PrintPartDto } from '#shared/types/prints';
 export function createPrintPartForm(part?: PrintPartDto) {
   return {
     key: crypto.randomUUID(),
+    bambuLinked: part?.bambuLinked ?? false,
     id: part?.id,
     printerId: part?.printerId ?? '',
     buildPlateId: part?.componentUsages.find((entry) => entry.type === 'BUILD_PLATE')?.componentId ?? '',

@@ -1513,6 +1513,216 @@ try {
       (await json('/api/integrations/spoolman', {}, cookie)).body.operations.length === opsBefore,
     'Bambu results and corrections never send duplicate Spoolman consumption.',
   );
+
+  fake.state.logs.push({ ...fake.state.logs[0]!, id: 404, print_name: 'First linked part' });
+  fake.state.logs.push({
+    ...fake.state.logs[0]!,
+    id: 405,
+    print_name: 'Failed second part',
+    status: 'failed',
+    duration_seconds: 120,
+    filament_used_grams: 3,
+    failure_reason: 'Synthetic adhesion failure',
+  });
+  const mixedPartsInput = {
+    name: 'Mixed Bambuddy parts',
+    quantity: 2,
+    parts: [
+      remotePayload,
+      { ...payload, filaments: [{ filamentId: filament.id, spoolId: otherSpool.body.id, usedGrams: '3' }] },
+      remotePayload,
+    ],
+  };
+  const mixedDraft = await json(
+    '/api/prints',
+    { method: 'POST', body: JSON.stringify(mixedPartsInput) },
+    cookie,
+  );
+  check(mixedDraft.response.ok, 'Mixed Bambuddy draft must be created.');
+  for (const [index, remoteLogId] of [404, 405].entries())
+    check(
+      (
+        await bb({
+          action: 'ATTACH',
+          printId: mixedDraft.body.id,
+          partId: mixedDraft.body.parts[index].id,
+          remoteLogId,
+        })
+      ).response.ok,
+      'Each part can attach its own remote run.',
+    );
+  check(
+    (
+      await bb({
+        action: 'ATTACH',
+        printId: mixedDraft.body.id,
+        partId: mixedDraft.body.parts[2].id,
+        remoteLogId: 404,
+      })
+    ).response.status === 409,
+    'A remote run cannot be reused across parts.',
+  );
+  const protectedParts = await json(
+    `/api/prints/${mixedDraft.body.id}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({
+        ...mixedPartsInput,
+        parts: mixedPartsInput.parts
+          .slice(1)
+          .map((part, index) => ({ ...part, id: mixedDraft.body.parts[index + 1].id })),
+      }),
+    },
+    cookie,
+  );
+  check(protectedParts.response.status === 409, 'Editing cannot silently discard a linked part.');
+  const mixedDone = (await json(`/api/prints/${mixedDraft.body.id}/complete`, { method: 'POST' }, cookie))
+    .body;
+  const mixedLinks = [];
+  for (const part of mixedDone.parts.slice(0, 2))
+    mixedLinks.push(
+      (await json(`/api/integrations/bambubuddy?printId=${mixedDone.id}&partId=${part.id}`, {}, cookie)).body
+        .link,
+    );
+  const mixedPreviews = mixedLinks.map((link) => ({ partId: link.partId, previewHash: link.previewHash }));
+  const mixedOutcome = {
+    status: 'FAILED',
+    failureReason: 'Synthetic adhesion failure',
+    durationSeconds: 210,
+    parts: mixedDone.parts.map((part: { id: string }, index: number) => ({
+      partId: part.id,
+      durationSeconds: [60, 120, 30][index],
+    })),
+    filaments: mixedDone.parts.flatMap((part: { filamentUsages: Array<{ id: string }> }, index: number) =>
+      part.filamentUsages.map((line) => ({ usageId: line.id, usedGrams: String(index + 2) })),
+    ),
+  };
+  const mixedBefore = (await json(`/api/spools/${otherSpool.body.id}`, {}, cookie)).body.remainingGrams;
+  const mixedOpsBefore = (await json('/api/integrations/spoolman', {}, cookie)).body.operations.map(
+    (operation: { id: string }) => operation.id,
+  );
+  check(
+    (
+      await bb({
+        action: 'IMPORT',
+        printId: mixedDone.id,
+        previews: mixedPreviews,
+        outcome: { ...mixedOutcome, status: 'SUCCESS' },
+      })
+    ).response.status === 409,
+    'Any failed linked run forces a shared failed outcome.',
+  );
+  check(
+    (
+      await json(
+        `/api/prints/${mixedDone.id}/outcome`,
+        { method: 'POST', body: JSON.stringify({ ...mixedOutcome, status: 'SUCCESS' }) },
+        cookie,
+      )
+    ).response.status === 409,
+    'Manual outcomes cannot bypass a failed linked run.',
+  );
+  check(
+    (
+      await bb({
+        action: 'IMPORT',
+        printId: mixedDone.id,
+        previews: mixedPreviews.slice(0, 1),
+        outcome: mixedOutcome,
+      })
+    ).response.status === 409,
+    'All linked previews are required for an atomic import.',
+  );
+  fake.state.logs.find((log) => log.id === 404)!.print_name = 'Updated preview';
+  await bb({ action: 'SYNC_PRINT', printId: mixedDone.id, partId: mixedDone.parts[0].id });
+  check(
+    (await bb({ action: 'IMPORT', printId: mixedDone.id, previews: mixedPreviews, outcome: mixedOutcome }))
+      .response.status === 409,
+    'A stale preview prevents every part from being imported.',
+  );
+  check(
+    (await json(`/api/prints/${mixedDone.id}`, {}, cookie)).body.outcome === null &&
+      (await json(`/api/spools/${otherSpool.body.id}`, {}, cookie)).body.remainingGrams === mixedBefore &&
+      (await json('/api/integrations/spoolman', {}, cookie)).body.operations.length === mixedOpsBefore.length,
+    'Rejected multipart imports must not book any stock or outcome.',
+  );
+  mixedPreviews[0]!.previewHash = (
+    await json(
+      `/api/integrations/bambubuddy?printId=${mixedDone.id}&partId=${mixedDone.parts[0].id}`,
+      {},
+      cookie,
+    )
+  ).body.link.previewHash;
+  const mixedImport = {
+    action: 'IMPORT',
+    printId: mixedDone.id,
+    previews: mixedPreviews,
+    outcome: mixedOutcome,
+  };
+  check(
+    (await bb(mixedImport)).response.ok && (await bb(mixedImport)).response.ok,
+    'Mixed imported/manual parts save atomically and retry idempotently.',
+  );
+  const mixedOps = (await json('/api/integrations/spoolman', {}, cookie)).body.operations.filter(
+    (operation: { id: string }) => !mixedOpsBefore.includes(operation.id),
+  );
+  check(
+    mixedOps.length === 1 &&
+      mixedOps[0].grams === '4' &&
+      Number((await json(`/api/spools/${otherSpool.body.id}`, {}, cookie)).body.remainingGrams) ===
+        Number(mixedBefore) - 3,
+    'Only the manual remote-owned part queues consumption; linked native material is deducted once.',
+  );
+  const mixedCorrection = await json(
+    `/api/prints/${mixedDone.id}/outcome/correct`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        ...mixedOutcome,
+        filaments: mixedOutcome.filaments.map((line: { usageId: string; usedGrams: string }) => ({
+          ...line,
+          usedGrams: String(Number(line.usedGrams) + 1),
+        })),
+        expectedRevision: 1,
+        operationKey: crypto.randomUUID(),
+        note: 'Measured each part again',
+      }),
+    },
+    cookie,
+  );
+  check(mixedCorrection.response.ok, 'Mixed actuals can be corrected together.');
+  const correctionOps = (await json('/api/integrations/spoolman', {}, cookie)).body.operations.filter(
+    (operation: { id: string }) => !mixedOpsBefore.includes(operation.id),
+  );
+  check(
+    correctionOps.length === 2 &&
+      correctionOps.some((operation: { grams: string }) => operation.grams === '1') &&
+      Number((await json(`/api/spools/${otherSpool.body.id}`, {}, cookie)).body.remainingGrams) ===
+        Number(mixedBefore) - 4,
+    'Corrections skip duplicate remote consumption only for imported parts.',
+  );
+  for (const operation of correctionOps)
+    await sm({ action: 'OPERATION', data: { operationId: operation.id, action: 'SEND' } });
+  fake.state.logs.find((log) => log.id === 404)!.duration_seconds = 999;
+  await bb({ action: 'SYNC_PRINT', printId: mixedDone.id, partId: mixedDone.parts[0].id });
+  check(
+    (
+      await json(
+        `/api/integrations/bambubuddy?printId=${mixedDone.id}&partId=${mixedDone.parts[0].id}`,
+        {},
+        cookie,
+      )
+    ).body.link.log.duration_seconds === 60,
+    'Imported remote snapshots remain immutable.',
+  );
+  const mixedRetry = await json(`/api/prints/${mixedDone.id}/retry`, { method: 'POST' }, cookie);
+  check(
+    mixedRetry.response.ok &&
+      mixedRetry.body.parts.length === 3 &&
+      mixedRetry.body.parts.every((part: { bambuLinked: boolean }) => !part.bambuLinked),
+    'Retry copies parts without reusing remote links.',
+  );
+
   const ambiguousDraft = await json(
     '/api/prints',
     { method: 'POST', body: JSON.stringify(remotePayload) },

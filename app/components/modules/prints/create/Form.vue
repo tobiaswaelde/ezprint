@@ -66,7 +66,7 @@
                     color="error"
                     variant="ghost"
                     :aria-label="t('prints.removePart', { number: index + 1 })"
-                    :disabled="form.parts.length === 1"
+                    :disabled="form.parts.length === 1 || part.bambuLinked"
                     @click="form.parts.splice(index, 1)"
                   /></div
               ></template>

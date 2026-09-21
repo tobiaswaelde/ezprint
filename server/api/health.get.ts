@@ -367,11 +367,28 @@ defineRouteMeta({
               },
               printerId: { type: 'string' },
               printId: { type: 'string' },
+              partId: {
+                type: 'string',
+                description: 'Required for attachment or synchronization of a multipart print.',
+              },
               remoteId: { type: ['integer', 'null'], minimum: 1 },
               remoteLogId: { type: 'integer', minimum: 1 },
               slot: { type: 'string', pattern: '^\\d{1,3}:\\d{1,3}$' },
               spoolId: { type: ['string', 'null'] },
               previewHash: { type: 'string', pattern: '^[a-f0-9]{64}$' },
+              previews: {
+                type: 'array',
+                minItems: 1,
+                maxItems: 100,
+                items: {
+                  type: 'object',
+                  required: ['partId', 'previewHash'],
+                  properties: {
+                    partId: { type: 'string' },
+                    previewHash: { type: 'string', pattern: '^[a-f0-9]{64}$' },
+                  },
+                },
+              },
               outcome: { $ref: '#/components/schemas/PrintOutcomeInput' },
             },
           },

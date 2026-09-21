@@ -64,6 +64,7 @@ export interface BambuStatus {
     } | null;
   }>;
   link: {
+    partId: string;
     remoteLogId: number;
     log: BambuLog;
     previewHash: string;
@@ -72,4 +73,11 @@ export interface BambuStatus {
     error: string | null;
     importedAt: string | null;
   } | null;
+}
+
+export interface BambuPartActuals {
+  durationSeconds: string | number;
+  grams: Record<string, string>;
+  link: BambuStatus['link'];
+  ready: boolean;
 }

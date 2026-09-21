@@ -559,9 +559,66 @@ test('regenerates every application screenshot used by the documentation', async
   await expect(
     page.getByRole('button', { name: 'Confirm actual values and import outcome', exact: true }),
   ).toBeVisible();
+  await page
+    .getByRole('button', { name: 'Confirm actual values and import outcome', exact: true })
+    .scrollIntoViewIfNeeded();
   await capture(page, 'bambubuddy-preview.jpg');
   await page.getByRole('button', { name: 'Confirm actual values and import outcome', exact: true }).click();
   await expect(page.getByText('Applied', { exact: true })).toBeVisible();
+  fake.state.logs.push({
+    ...fake.state.logs[0]!,
+    id: 777,
+    print_name: 'Failed enclosure plate',
+    status: 'failed',
+    duration_seconds: 120,
+    filament_used_grams: 3,
+    failure_reason: 'Synthetic adhesion failure',
+  });
+  const multipartIntegration = await api<{ id: string; parts: Array<{ id: string }> }>(
+    page,
+    '/api/prints',
+    'POST',
+    {
+      name: 'Two-part enclosure',
+      quantity: 2,
+      parts: [printInput, printInput],
+    },
+  );
+  await api(page, `/api/prints/${multipartIntegration.id}/complete`, 'POST');
+  await api(page, '/api/integrations/bambubuddy', 'POST', {
+    action: 'ATTACH',
+    printId: multipartIntegration.id,
+    partId: multipartIntegration.parts[1]!.id,
+    remoteLogId: 777,
+  });
+  await page.goto(
+    `/settings/bambuddy?printId=${multipartIntegration.id}&printerId=${printer.id}#integration-bambubuddy-tools`,
+  );
+  const manualPart = page.getByRole('group', { name: 'Part 1', exact: true });
+  const linkedPart = page.getByRole('group', { name: 'Part 2', exact: true });
+  await expect(linkedPart.getByText('Failed enclosure plate', { exact: false })).toBeVisible();
+  await manualPart.getByLabel('Actual duration (seconds)', { exact: true }).fill('');
+  await expect(
+    page.getByRole('button', { name: 'Confirm actual values and import outcome', exact: true }),
+  ).toBeDisabled();
+  await manualPart.getByLabel('Actual duration (seconds)', { exact: true }).fill('30');
+  await manualPart.getByLabel('Polymaker PLA - Teal · Actual weight (g)', { exact: true }).fill('4');
+  await expect(linkedPart.getByLabel('Actual duration (seconds)', { exact: true })).toBeDisabled();
+  await expect(page.getByLabel('Print outcome', { exact: true })).toBeDisabled();
+  await page.setViewportSize({ width: 1280, height: 1100 });
+  await manualPart.evaluate((element) => element.scrollIntoView({ block: 'start' }));
+  await capture(page, 'bambubuddy-parts.jpg');
+  const importedParts = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/api/integrations/bambubuddy') && response.request().method() === 'POST',
+  );
+  await page.getByRole('button', { name: 'Confirm actual values and import outcome', exact: true }).click();
+  expect((await importedParts).ok()).toBe(true);
+  await expect(page.getByText('Applied', { exact: true })).toBeVisible();
+  const mixedResult = await (await page.request.get(`/api/prints/${multipartIntegration.id}`)).json();
+  expect(mixedResult.outcome.status).toBe('FAILED');
+  expect(mixedResult.outcome.durationSeconds).toBe(150);
+  expect(mixedResult.outcome.parts).toHaveLength(2);
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   const integrationA11y = await new AxeBuilder({ page }).analyze();

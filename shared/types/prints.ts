@@ -10,6 +10,7 @@ export type OutcomeRevisionDto = PrintOutcomeInput & {
 };
 
 export interface PrintPartDto {
+  bambuLinked: boolean;
   id: string;
   position: number;
   printerId: string;

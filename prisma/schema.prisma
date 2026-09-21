@@ -166,7 +166,7 @@ model Filament {
 
 model PrintJob {
   parts PrintPart[]
-  bambuLink BambuPrintLink?
+  bambuLinks BambuPrintLink[]
   seriesId             String?
   series               PrintSeries? @relation(fields: [seriesId], references: [id], onDelete: Restrict)
   repeatOfId           String?
@@ -208,6 +208,7 @@ model PrintJob {
 }
 
 model PrintPart {
+  bambuLink BambuPrintLink?
   id String @id @default(cuid())
   printJobId String
   printJob PrintJob @relation(fields: [printJobId], references: [id], onDelete: Cascade)
@@ -399,7 +400,9 @@ model SpoolSyncOperation {
 
 model BambuPrintLink {
   id String @id @default(cuid())
-  printJobId String @unique
+  partId String @unique
+  part PrintPart @relation(fields: [partId], references: [id], onDelete: Restrict)
+  printJobId String
   printJob PrintJob @relation(fields: [printJobId], references: [id], onDelete: Restrict)
   remoteLogId Int @unique
   cachedJson String
@@ -407,6 +410,8 @@ model BambuPrintLink {
   error String?
   importedJson String?
   importedAt DateTime?
+
+  @@index([printJobId])
 }
 model BambuTrayMapping {
   id String @id @default(cuid())

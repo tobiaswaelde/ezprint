@@ -93,75 +93,35 @@
         </div>
         <template v-if="print">
           <h2 class="text-lg font-semibold">{{ print.name }}</h2>
-          <p>{{ t('integration.resultHelp') }}</p>
-          <template v-if="!status.link"
-            ><UButton :label="t('integration.loadLogs')" :loading="busy" @click="loadLogs" />
-            <div v-if="logs" class="space-y-2">
-              <div
-                v-for="log in logs.items"
-                :key="log.id"
-                class="flex flex-wrap items-center justify-between gap-2 border-b border-default py-2"
-              >
-                <span>#{{ log.id }} · {{ log.print_name }} · {{ log.status }}</span
-                ><UButton
-                  :label="t('integration.attach')"
-                  @click="action({ action: 'ATTACH', printId: print.id, remoteLogId: log.id })"
-                />
-              </div>
-              <div class="flex gap-2">
-                <UButton :label="t('common.previous')" :disabled="page === 1" @click="logPage(-1)" /><UButton
-                  :label="t('common.next')"
-                  :disabled="page * 50 >= logs.total"
-                  @click="logPage(1)"
-                />
-              </div></div
-          ></template>
-          <section v-else class="space-y-3 rounded border border-default p-4">
-            <p>
-              #{{ status.link.remoteLogId }} · {{ status.link.log.print_name }} · {{ status.link.log.status }}
-            </p>
-            <p>{{ t('integration.remoteGrams') }}: {{ status.link.log.filament_used_grams ?? '—' }} g</p>
-            <UButton
-              :label="t('integration.sync')"
-              @click="action({ action: 'SYNC_PRINT', printId: print.id })"
-            />
-            <UAlert v-if="status.link.error" color="warning" :description="t('integration.offline')" />
-            <UAlert
-              v-if="!status.link.terminal"
-              color="warning"
-              :description="t('integration.pendingResult')"
-            />
-            <UAlert
-              v-else-if="status.link.importedAt"
-              color="success"
-              :description="t('integration.APPLIED')"
-            />
-            <template v-else>
-              <p>{{ t(`outcome.${status.link.terminal}`) }}</p>
-              <UFormField :label="t('outcome.duration')"
-                ><UInput
-                  v-model="actualSeconds"
-                  type="number"
-                  min="0"
-                  :disabled="status.link.log.duration_seconds != null"
-              /></UFormField>
-              <UFormField
-                v-for="line in print.filamentUsages"
-                :key="line.id"
-                :label="`${line.name} · ${t('outcome.grams')}`"
-                ><UInput v-model="actualGrams[line.id]" inputmode="decimal"
-              /></UFormField>
-              <UFormField v-if="status.link.terminal === 'FAILED'" :label="t('outcome.reason')"
-                ><UInput v-model="failureReason" class="w-full"
-              /></UFormField>
-              <UButton
-                :label="t('integration.confirmResult')"
-                :disabled="print.status !== 'DONE' || !!status.link.error"
-                :loading="busy"
-                @click="importResult"
+          <p>{{ t('integration.partsResultHelp') }}</p>
+          <ModulesSettingsBambuPart
+            v-for="(part, index) in print.parts"
+            :key="`${part.id}:${revision}`"
+            v-model="actuals[part.id]!"
+            :print-id="print.id"
+            :part="part"
+            :number="index + 1"
+            :recorded="!!print.outcome"
+          />
+          <template v-if="!print.outcome">
+            <UFormField :label="t('outcome.title')">
+              <USelect
+                v-model="outcomeStatus"
+                :disabled="hasFailedRun"
+                :items="statusOptions"
+                class="w-full"
               />
-            </template>
-          </section>
+            </UFormField>
+            <UFormField v-if="outcomeStatus === 'FAILED'" :label="t('outcome.reason')"
+              ><UInput v-model="failureReason" class="w-full"
+            /></UFormField>
+            <UButton
+              :label="t('integration.confirmResult')"
+              :disabled="!canImport"
+              :loading="busy"
+              @click="importResult"
+            />
+          </template>
           <UButton :to="`/prints/${print.id}`" :label="t('common.back')" color="neutral" />
         </template>
       </template>
@@ -169,7 +129,7 @@
   </UCard>
 </template>
 <script setup lang="ts">
-import type { BambuLog, BambuStatus } from '#shared/types/integrations';
+import type { BambuPartActuals, BambuStatus } from '#shared/types/integrations';
 import type { PrintJobDto } from '#shared/types/prints';
 const { t } = useI18n();
 const { enabled: spoolManagementEnabled, load: loadSpoolManagement } = useSpoolManagement();
@@ -182,11 +142,38 @@ const trayChoices = reactive<Record<string, string>>({});
 const remotePrinter = ref(0);
 const error = ref('');
 const busy = ref(false);
-const page = ref(1);
-const logs = ref<{ items: BambuLog[]; total: number } | null>(null);
-const actualSeconds = ref<string | number>('');
-const actualGrams = reactive<Record<string, string>>({});
+const actuals = reactive<Record<string, BambuPartActuals>>({});
+const revision = ref(0);
+const outcomeStatus = ref<'SUCCESS' | 'FAILED'>('SUCCESS');
+const statusOptions = computed(() =>
+  ['SUCCESS', 'FAILED'].map((value) => ({ value, label: t(`outcome.${value}`) })),
+);
+const hasFailedRun = computed(() =>
+  Object.values(actuals).some((actual) => actual.link?.terminal === 'FAILED'),
+);
+const canImport = computed(
+  () =>
+    print.value?.status === 'DONE' &&
+    !busy.value &&
+    print.value.parts.every(
+      (part) =>
+        actuals[part.id]?.ready &&
+        String(actuals[part.id]!.durationSeconds).trim() !== '' &&
+        part.filamentUsages.every((line) => actuals[part.id]!.grams[line.id]?.trim()) &&
+        (!actuals[part.id]!.link || (actuals[part.id]!.link?.terminal && !actuals[part.id]!.link?.error)),
+    ) &&
+    Object.values(actuals).some((actual) => actual.link),
+);
 const failureReason = ref('');
+watch(hasFailedRun, (failed) => {
+  if (failed) {
+    outcomeStatus.value = 'FAILED';
+    failureReason.value ||= Object.values(actuals)
+      .map((actual) => actual.link?.log.failure_reason)
+      .filter(Boolean)
+      .join('; ');
+  }
+});
 const selected = computed(() => status.value?.printers.find((item) => item.id === printerId.value));
 watch(printerId, (value, old) => {
   if (old && value !== old) void run(refresh);
@@ -207,54 +194,65 @@ async function run(fn: () => Promise<void>) {
 }
 async function refresh() {
   status.value = await $fetch<BambuStatus>('/api/integrations/bambubuddy', {
-    query: { printId, printerId: printerId.value || undefined },
+    query: { printerId: printerId.value || undefined },
   });
   printerId.value ||= status.value.printers[0]?.id ?? '';
-  const link = status.value.link;
-  if (link) {
-    actualSeconds.value = link.log.duration_seconds ?? '';
-    failureReason.value = link.log.failure_reason ?? '';
-    if (print.value?.filamentUsages.length === 1 && link.log.filament_used_grams != null)
-      actualGrams[print.value.filamentUsages[0]!.id] = String(link.log.filament_used_grams);
+  if (printId) {
+    print.value = await $fetch<PrintJobDto>(`/api/prints/${printId}`);
+    for (const part of print.value.parts)
+      actuals[part.id] ??= {
+        durationSeconds:
+          print.value.outcome?.parts?.find((entry) => entry.partId === part.id)?.durationSeconds ??
+          (print.value.parts.length === 1 ? print.value.outcome?.durationSeconds : undefined) ??
+          part.totalDurationSeconds,
+        grams: Object.fromEntries(
+          part.filamentUsages.map((line) => [
+            line.id,
+            print.value?.outcome?.filaments.find((entry) => entry.usageId === line.id)?.usedGrams ??
+              line.usedGrams,
+          ]),
+        ),
+        link: null,
+        ready: false,
+      };
   }
 }
+
 async function action(body: unknown) {
   await run(async () => {
     await $fetch('/api/integrations/bambubuddy', { method: 'POST', body: body as Record<string, unknown> });
     await refresh();
+    revision.value++;
   });
-}
-async function loadLogs() {
-  await run(async () => {
-    logs.value = await $fetch('/api/integrations/bambubuddy', {
-      query: { view: 'logs', printerId: printerId.value, page: page.value },
-    });
-  });
-}
-async function logPage(delta: number) {
-  page.value += delta;
-  await loadLogs();
 }
 async function importResult() {
-  if (!print.value || !status.value?.link || actualSeconds.value === '') return;
+  if (!print.value || !canImport.value) return;
+  const parts = print.value.parts.map((part) => ({
+    partId: part.id,
+    durationSeconds: Number(actuals[part.id]!.durationSeconds),
+  }));
   await action({
     action: 'IMPORT',
     printId: print.value.id,
-    previewHash: status.value.link.previewHash,
+    previews: print.value.parts.flatMap((part) =>
+      actuals[part.id]!.link ? [{ partId: part.id, previewHash: actuals[part.id]!.link!.previewHash }] : [],
+    ),
     outcome: {
-      status: status.value.link.terminal,
-      durationSeconds: Number(actualSeconds.value),
-      filaments: print.value.filamentUsages.map((line) => ({
-        usageId: line.id,
-        usedGrams: actualGrams[line.id] ?? '',
-      })),
-      failureReason: failureReason.value || null,
+      status: outcomeStatus.value,
+      durationSeconds: parts.reduce((total, part) => total + part.durationSeconds, 0),
+      ...(parts.length > 1 ? { parts } : {}),
+      filaments: print.value.parts.flatMap((part) =>
+        part.filamentUsages.map((line) => ({
+          usageId: line.id,
+          usedGrams: actuals[part.id]!.grams[line.id] ?? '',
+        })),
+      ),
+      failureReason: outcomeStatus.value === 'FAILED' ? failureReason.value || null : null,
     },
   });
 }
 onMounted(() =>
   run(async () => {
-    if (printId) print.value = await $fetch<PrintJobDto>(`/api/prints/${printId}`);
     await loadSpoolManagement();
     await refresh();
   }),
