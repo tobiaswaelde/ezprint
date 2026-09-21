@@ -9,8 +9,8 @@
           :filter-fields="filterFields"
           :ui="{
             root: 'border-b border-default',
-            primary: 'flex-wrap items-center gap-3',
-            secondary: 'flex-wrap items-center gap-3',
+            primary: 'flex-wrap',
+            secondary: 'flex-wrap',
           }"
         >
           <template #options>
@@ -269,15 +269,7 @@ if (typeof route.query.seriesId === 'string' && route.query.seriesId)
   });
 const filtering = ref<Filtering>({ operator: FilteringMode.Intersect, filters: initialFilters });
 
-const breadcrumbItems = computed(() => [
-  { icon: 'i-tabler-home', label: t('nav.dashboard'), to: '/' },
-  {
-    icon: props.customerId ? 'i-tabler-users' : 'i-tabler-printer',
-    label: props.customerId ? t('nav.customers') : t('nav.prints'),
-    to: props.customerId ? '/customers' : undefined,
-  },
-  ...(props.customerId ? [{ icon: 'i-tabler-user', label: props.customerName ?? t('common.loading') }] : []),
-]);
+const breadcrumbItems = useBreadcrumbItems(() => props.customerName);
 const activeFields = computed(() => new Set(filtering.value.filters.map((filter) => filter.field)));
 const filterFields = computed<FilterField[]>(() => {
   const fields: FilterField[] = [

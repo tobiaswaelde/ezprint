@@ -1,3 +1,4 @@
+import { mainNavigation, settingsNavigation } from './app/utils/navigation';
 import packageJson from './package.json' with { type: 'json' };
 
 export default defineNuxtConfig({
@@ -71,6 +72,9 @@ export default defineNuxtConfig({
     clientBundle: {
       scan: true,
       icons: [
+        ...[...mainNavigation, ...settingsNavigation].map((item) =>
+          item.icon.replace('i-tabler-', 'tabler:'),
+        ),
         'tabler:adjustments',
         'tabler:arrows-sort',
         'tabler:cancel',

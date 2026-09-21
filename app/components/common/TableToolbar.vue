@@ -2,7 +2,7 @@
   <UDashboardToolbar
     data-table-toolbar
     :ui="{
-      root: 'flex-wrap items-center gap-3',
+      root: 'flex-wrap',
       left: 'shrink-0',
       right: 'ml-auto min-w-0 basis-full flex-wrap justify-end gap-2 xl:basis-auto',
     }"
@@ -29,11 +29,8 @@
 </template>
 
 <script setup lang="ts">
-const props = defineProps<{ icon: string; title: string }>();
+defineProps<{ icon: string; title: string }>();
 const search = defineModel<string>('search', { required: true });
 const { t } = useI18n();
-const breadcrumbItems = computed(() => [
-  { icon: 'i-tabler-home', label: t('nav.dashboard'), to: '/' },
-  { icon: props.icon, label: props.title },
-]);
+const breadcrumbItems = useBreadcrumbItems();
 </script>

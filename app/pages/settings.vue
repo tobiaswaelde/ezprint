@@ -1,8 +1,11 @@
 <template>
   <LayoutPagePanel panel-id="settings" :title="t('nav.settings')">
     <template #toolbar>
-      <UDashboardToolbar data-settings-toolbar>
-        <UNavigationMenu highlight class="-mx-1 flex-1" :items="navigation" :ui="{ item: 'py-0' }" />
+      <UDashboardToolbar data-settings-toolbar :ui="{ root: 'flex-wrap', right: 'flex-wrap' }">
+        <template #left><UBreadcrumb :items="breadcrumbItems" /></template>
+        <template #right>
+          <UNavigationMenu highlight :items="navigation" />
+        </template>
       </UDashboardToolbar>
     </template>
 
@@ -14,49 +17,18 @@
 const { t } = useI18n();
 const { spoolmanEnabled, bambubuddyEnabled, load: loadIntegrationSettings } = useIntegrationSettings();
 
-const navigation = computed(() => [
-  [
-    {
-      label: t('settings.general'),
-      icon: 'i-tabler-adjustments-horizontal',
-      to: '/settings',
-      exact: true,
-    },
-    {
-      label: t('settings.calculation'),
-      icon: 'i-tabler-calculator',
-      to: '/settings/calculation',
-    },
-    {
-      label: t('settings.features'),
-      icon: 'i-tabler-toggle-right',
-      to: '/settings/features',
-    },
-    {
-      label: t('settings.backup'),
-      icon: 'i-tabler-database-export',
-      to: '/settings/backup',
-    },
-    ...(spoolmanEnabled.value
-      ? [
-          {
-            label: t('integration.spoolmanTab'),
-            icon: 'i-tabler-packages',
-            to: '/settings/spoolman',
-          },
-        ]
-      : []),
-    ...(bambubuddyEnabled.value
-      ? [
-          {
-            label: t('integration.bambuTab'),
-            icon: 'i-tabler-printer',
-            to: '/settings/bambuddy',
-          },
-        ]
-      : []),
-  ],
-]);
+const breadcrumbItems = useBreadcrumbItems();
+const navigation = computed(() =>
+  settingsNavigation
+    .filter((item) => item.to !== '/settings/spoolman' || spoolmanEnabled.value)
+    .filter((item) => item.to !== '/settings/bambuddy' || bambubuddyEnabled.value)
+    .map((item) => ({
+      label: t(item.labelKey),
+      icon: item.icon,
+      to: item.to,
+      exact: item.to === '/settings',
+    })),
+);
 
 onMounted(() => loadIntegrationSettings(true));
 </script>
