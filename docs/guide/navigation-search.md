@@ -13,6 +13,10 @@ to the overview. The sidebar can be collapsed or resized; its state is stored in
 full-width footer links are labeled **GitHub** and **Documentation**. The centered installed version opens the
 changelog, and an **Update available** badge appears when a newer semantic version is available.
 
+Every management page includes a breadcrumb rooted at **Dashboard**. Parent links follow the navigation hierarchy;
+detail pages show the record name and settings pages show the active settings section. Login, setup, offline,
+and printable reports or labels do not include breadcrumbs. Toolbars use the standard component spacing.
+
 Every list page has a fixed toolbar with icon-backed breadcrumbs, local search, table options, and **New**. Local
 search filters only the current resource. **Table options → Show archived** adds archived records to the table.
 Press <kbd>Shift</kbd>+<kbd>N</kbd> on a list page to open its create dialog. Open the keyboard-shortcut dialog

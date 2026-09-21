@@ -395,6 +395,8 @@ import type { PrintStatus } from '#shared/schemas/prints';
 import type { MasterDataListItem, PaginatedResponse } from '#shared/types/master-data';
 import type { PrintJobDto } from '#shared/types/prints';
 
+const emit = defineEmits<{ title: [value: string] }>();
+
 const props = defineProps<{ printId?: string }>();
 const { t } = useI18n();
 const { enabled: spoolManagementEnabled, load: loadSpoolManagement } = useSpoolManagement();
@@ -491,6 +493,7 @@ function payload() {
 
 function hydrate(value: PrintJobDto) {
   job.value = value;
+  emit('title', value.name);
   selectedStatus.value = value.status;
   form.name = value.name;
   form.quantity = value.quantity;
@@ -615,6 +618,7 @@ async function updateWorkflow(body: { status?: PrintStatus; paid?: boolean }) {
   if (!job.value) return;
   const value = await $fetch<PrintJobDto>(`/api/prints/${job.value.id}`, { method: 'PATCH', body });
   job.value = value;
+  emit('title', value.name);
   selectedStatus.value = value.status;
 }
 

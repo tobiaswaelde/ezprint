@@ -69,24 +69,24 @@ const changelogOpen = useState('changelog-open', () => false);
 const { load: loadVersion, updateAvailable } = useVersionCheck();
 const { enabled: spoolManagementEnabled } = useSpoolManagement();
 const { loaded: featuresLoaded, printSeriesEnabled } = useFeatures();
+const navigationItem = (path: string) => {
+  const item = mainNavigation.find((item) => item.to === path)!;
+  return { label: t(item.labelKey), icon: item.icon, to: item.to };
+};
 const navigation = computed(() => [
   { label: t('nav.sections.workspace'), type: 'label' as const },
-  { label: t('nav.dashboard'), icon: 'i-tabler-layout-dashboard', to: '/' },
-  { label: t('nav.prints'), icon: 'i-tabler-printer', to: '/prints' },
-  ...(featuresLoaded.value && printSeriesEnabled.value
-    ? [{ label: t('nav.series'), icon: 'i-tabler-list-check', to: '/series' }]
-    : []),
-  { label: t('nav.customers'), icon: 'i-tabler-users', to: '/customers' },
+  navigationItem('/'),
+  navigationItem('/prints'),
+  ...(featuresLoaded.value && printSeriesEnabled.value ? [navigationItem('/series')] : []),
+  navigationItem('/customers'),
   { label: t('nav.sections.masterData'), type: 'label' as const },
-  { label: t('nav.manufacturers'), icon: 'i-tabler-building-factory-2', to: '/manufacturers' },
-  { label: t('nav.printers'), icon: 'i-tabler-printer', to: '/printers' },
-  { label: t('nav.components'), icon: 'i-tabler-components', to: '/components' },
-  { label: t('nav.filaments'), icon: 'i-tabler-disc', to: '/filaments' },
-  ...(spoolManagementEnabled.value
-    ? [{ label: t('nav.spools'), icon: 'i-tabler-qrcode', to: '/spools' }]
-    : []),
+  navigationItem('/manufacturers'),
+  navigationItem('/printers'),
+  navigationItem('/components'),
+  navigationItem('/filaments'),
+  ...(spoolManagementEnabled.value ? [navigationItem('/spools')] : []),
   { label: t('nav.sections.system'), type: 'label' as const },
-  { label: t('nav.settings'), icon: 'i-tabler-settings', to: '/settings' },
+  navigationItem('/settings'),
 ]);
 
 onMounted(loadVersion);

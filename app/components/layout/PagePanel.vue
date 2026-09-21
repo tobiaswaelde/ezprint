@@ -18,7 +18,11 @@
           <LayoutAppUserMenu />
         </template>
       </UDashboardNavbar>
-      <slot name="toolbar" />
+      <slot name="toolbar">
+        <UDashboardToolbar>
+          <template #left><UBreadcrumb :items="breadcrumbItems" /></template>
+        </UDashboardToolbar>
+      </slot>
     </template>
     <template #body>
       <div v-if="table" class="flex min-h-0 flex-1 flex-col">
@@ -37,7 +41,12 @@
 <script setup lang="ts">
 const { t } = useI18n();
 
-withDefaults(defineProps<{ panelId: string; title: string; table?: boolean }>(), {
-  table: false,
-});
+const props = withDefaults(
+  defineProps<{ panelId: string; title: string; table?: boolean; breadcrumbTitle?: string }>(),
+  {
+    table: false,
+    breadcrumbTitle: undefined,
+  },
+);
+const breadcrumbItems = useBreadcrumbItems(() => props.breadcrumbTitle);
 </script>

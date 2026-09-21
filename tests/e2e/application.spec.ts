@@ -1,11 +1,11 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Locator } from '@playwright/test';
 
-async function expectCompactToolbars(toolbars: Locator) {
+async function expectStandardToolbars(toolbars: Locator) {
   await expect(toolbars).not.toHaveCount(0);
   const count = await toolbars.count();
   for (let index = 0; index < count; index++) {
-    await expect(toolbars.nth(index)).toHaveCSS('min-height', '0px');
+    await expect(toolbars.nth(index)).toHaveCSS('min-height', '49px');
   }
 }
 
@@ -136,7 +136,7 @@ test('setup, navigation, persistence, accessibility, and responsive shell', asyn
   await page.goto('/prints');
   const printsToolbar = page.locator('[data-table-toolbar]');
   await expect(printsToolbar.getByText('Drucke', { exact: true })).toBeVisible();
-  await expectCompactToolbars(printsToolbar.locator(':scope > div > [data-slot="root"]'));
+  await expectStandardToolbars(printsToolbar.locator(':scope > div > [data-slot="root"]'));
   const breadcrumbItems = printsToolbar
     .getByRole('navigation', { name: 'breadcrumb' })
     .locator('[data-slot="item"]');
@@ -176,7 +176,7 @@ test('setup, navigation, persistence, accessibility, and responsive shell', asyn
   await expect(createPrintDialog).toBeHidden();
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await expectCompactToolbars(printsToolbar.locator(':scope > div > [data-slot="root"]'));
+  await expectStandardToolbars(printsToolbar.locator(':scope > div > [data-slot="root"]'));
   await expect(printsToolbar.getByRole('button', { name: 'New' })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.setViewportSize({ width: 1280, height: 720 });
@@ -185,7 +185,7 @@ test('setup, navigation, persistence, accessibility, and responsive shell', asyn
   const tableToolbar = page.locator('[data-table-toolbar]');
   const tableRegion = page.locator('[data-table-region]');
   await expect(tableToolbar).toBeVisible();
-  await expectCompactToolbars(tableToolbar);
+  await expectStandardToolbars(tableToolbar);
   await expect(tableToolbar.getByRole('link', { name: 'Dashboard' })).toBeVisible();
   await expect(tableToolbar.getByText('Kunden')).toBeVisible();
   await expect(tableToolbar.getByRole('searchbox')).toBeVisible();
@@ -313,8 +313,8 @@ test('setup, navigation, persistence, accessibility, and responsive shell', asyn
   await expect(page).toHaveURL(/\/filaments$/);
   await page.goto('/settings/features');
   const settingsToolbar = page.locator('[data-settings-toolbar]');
-  await expectCompactToolbars(settingsToolbar);
-  expect((await settingsToolbar.boundingBox())!.height).toBeLessThanOrEqual(33);
+  await expectStandardToolbars(settingsToolbar);
+  expect((await settingsToolbar.boundingBox())!.height).toBeGreaterThanOrEqual(49);
   await page.getByRole('switch', { name: 'Druckserien' }).click();
   await page.getByRole('switch', { name: 'Spulenverwaltung' }).click();
   await page.getByRole('button', { name: 'Speichern', exact: true }).click();
@@ -435,7 +435,7 @@ test('setup, navigation, persistence, accessibility, and responsive shell', asyn
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(tableToolbar.getByText('Customers')).toBeVisible();
-  await expectCompactToolbars(tableToolbar);
+  await expectStandardToolbars(tableToolbar);
   const geometry = await page.evaluate(() => ({
     viewportWidth: innerWidth,
     documentWidth: document.documentElement.scrollWidth,
