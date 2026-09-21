@@ -26,7 +26,7 @@ it('preserves version 1 snapshot values when adding quantity and exact unit cost
     const original = database.prepare('SELECT * FROM PrintCostSnapshot').get();
     const preserved: Record<string, unknown> = {};
     for (const name of migrations.filter((name) => name >= '20260911160000')) {
-      if (name.endsWith('_print_parts')) {
+      if (name === '20260921013526_print_parts') {
         database.exec(`
           INSERT INTO Component (id, name, type, purchasePrice, expectedLifetimeHours, updatedAt)
           VALUES ('plate', 'Legacy plate', 'BUILD_PLATE', 20, 1000, CURRENT_TIMESTAMP);
@@ -51,8 +51,11 @@ it('preserves version 1 snapshot values when adding quantity and exact unit cost
         ...(preserved[table] as object),
         partId: 'part:print',
       });
-    for (const table of ['PrintOutcome', 'BambuPrintLink'])
-      expect(database.prepare(`SELECT * FROM ${table}`).get()).toEqual(preserved[table]);
+    expect(database.prepare('SELECT * FROM PrintOutcome').get()).toEqual(preserved.PrintOutcome);
+    expect(database.prepare('SELECT * FROM BambuPrintLink').get()).toEqual({
+      ...(preserved.BambuPrintLink as object),
+      partId: 'part:print',
+    });
     expect(database.prepare('SELECT * FROM PrintCostSnapshot').get()).toEqual({
       ...original!,
       quantity: 1,

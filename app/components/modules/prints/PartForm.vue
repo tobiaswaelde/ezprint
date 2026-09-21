@@ -1,10 +1,14 @@
 <template>
   <div class="space-y-6">
+    <p v-if="form.bambuLinked && (!section || section === 'general')" class="text-sm text-muted">
+      {{ t('integration.linkedPartLocked') }}
+    </p>
     <div v-if="!section || section === 'general'" class="grid gap-4 md:grid-cols-2">
       <UFormField :name="`parts.${partIndex}.printerId`" :label="t('nav.printers')" required>
         <CommonEntitySelect
           v-model="form.printerId"
           resource="printers"
+          :disabled="form.bambuLinked"
           @update:model-value="applyComponentDefaults"
         />
       </UFormField>

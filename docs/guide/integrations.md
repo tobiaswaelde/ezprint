@@ -41,15 +41,25 @@ Unlinking requires a measured opening balance and explicit native ownership. It 
 
 ## Bambuddy printer and print links
 
-Open **Settings → Bambuddy → Bambuddy printers and results** to review the detected remote printers, including installations without local printer master data. Choose the local printer and the remote printer ID, then save the link. Printer names may change without breaking identity. The section shows cached live state, AMS slots, and external trays. Shared Spoolman IDs take priority; otherwise select an explicit local spool for the slot. The local printer, remote printer, and spool selectors search their currently loaded entries. Conflicting mappings and unavailable spools require operator review. Mappings propose context only: select the verified physical spool in the print draft. Slot changes never rewrite completed usage lines. The current picker displays up to 100 local printers/spools; remote printer lists are bounded to 500.
+Open **Settings → Bambuddy → Bambuddy printers and results** to review the detected remote printers, including installations without local printer master data. Choose the local printer and the remote printer ID, then save the link. Printer names may change without breaking identity. The section shows cached live state, AMS slots, and external trays. Shared Spoolman IDs take priority; otherwise select an explicit local spool for the slot. Local printer and spool selectors search on the server and load more results on demand; their plus buttons create missing records. The remote printer selector searches the supplied remote list. Conflicting mappings and unavailable spools require operator review. Mappings propose context only: select the verified physical spool in the print draft. Slot changes never rewrite completed usage lines. Remote printer lists are bounded to 500.
 
-From a print, open **Bambuddy result** to jump directly to the Bambuddy tools in Settings, then choose the print log. Attach the exact run's stable print-log ID. A log can belong to only one local print; repeat orders require a new remote run. The picker pages through 50 records. Refreshing an attached job searches at most the latest 1,000 records for its printer; older missing entries retain their cached data and require manual reconciliation. Archive files can represent repeated runs, so ezPrint deliberately uses individual print-log records.
+From a print, open **Bambuddy result** to jump directly to the Bambuddy tools in Settings, then choose a print log separately for each part. Each picker uses that part's printer. Attach the exact run's stable print-log ID. A log can belong to only one local part; repeat orders require a new remote run. The picker pages through 50 records. Refreshing an attached job searches at most the latest 1,000 records for its printer; older missing entries retain their cached data and require manual reconciliation. Archive files can represent repeated runs, so ezPrint deliberately uses individual print-log records.
 
 ![Bambuddy terminal-result preview and explicit outcome confirmation](/screenshots/bambubuddy-preview.jpg)
 
 Only `completed` or `failed` records with a valid completion timestamp provide a proposed outcome. Live `IDLE`, running, paused, disconnected, cancelled, stopped, and skipped states never complete a local print. Complete the local workflow to **Done**, review the preview, and confirm the outcome. Available duration and total grams must match the remote record. If duration is absent, enter it; if multiple filament lines exist, distribute the reported total explicitly. Missing values are never fabricated. Polling refreshes the preview; it does not accept an unreviewed result.
 
-Native spools receive one outcome-linked deduction. For Spoolman-owned spools, a Bambuddy import creates neither a native deduction nor an outbound Spoolman operation, including corrections. Review ownership before manually recording a result already tracked elsewhere. Imported outcomes are idempotent across retries and restarts. Later changes to an imported remote record do not rewrite its historical snapshot; use the local outcome-correction workflow.
+Native spools receive one outcome-linked deduction. For Spoolman-owned spools, imported parts create neither a native deduction nor an outbound Spoolman operation, including corrections. Unlinked parts entered manually follow their normal stock ownership rules, even when other parts of the same print are imported. Review ownership before manually recording a result already tracked elsewhere. Imported outcomes are idempotent across retries and restarts. Later changes to an imported remote record do not rewrite its historical snapshot; use the local outcome-correction workflow.
+
+## Multipart results
+
+Each part has its own remote link, preview, duration, and material allocation. Leave a part unlinked to enter
+its actual values manually. Review all parts, then confirm one shared outcome. A failed linked run requires a
+**Failed** outcome and a reason. A changed preview, incomplete run, or invalid part prevents the entire import;
+there are no partial outcome or stock bookings. Linked parts cannot be removed or moved to another printer.
+Repeat and retry create new parts without reusing the remote links.
+
+![Failed linked part and manual actuals saved as one shared print outcome](/screenshots/bambubuddy-parts.jpg)
 
 ## Troubleshooting and supported contracts
 

@@ -565,6 +565,9 @@
     "attach": "Diesen Eintrag verknüpfen",
     "remoteGrams": "Gemeldeter Gesamtverbrauch",
     "pendingResult": "Ergebnis bleibt offen. Abgebrochene oder uneindeutige Aufträge manuell im Druckeditor klären.",
-    "confirmResult": "Istwerte bestätigen und Ergebnis übernehmen"
+    "confirmResult": "Istwerte bestätigen und Ergebnis übernehmen",
+    "manualPart": "Kein verknüpfter Lauf: Ist-Werte manuell eingeben oder einen Bambuddy-Lauf für diesen Teildruck zuordnen.",
+    "partsResultHelp": "Läufe den Teildrucken zuordnen, alle Ist-Werte prüfen und das gemeinsame Ergebnis bestätigen. Ein fehlgeschlagener verknüpfter Lauf erfordert ein fehlgeschlagenes Ergebnis.",
+    "linkedPartLocked": "Ein mit einem Bambuddy-Lauf verknüpfter Teildruck kann nicht entfernt oder einem anderen Drucker zugewiesen werden. Dupliziere den Print, um einen neuen Lauf zu planen."
   }
 }

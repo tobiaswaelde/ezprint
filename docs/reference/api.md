@@ -144,8 +144,8 @@ All routes require authentication; mutating routes require same-origin requests.
 
 - `GET /api/integrations/spoolman`: configuration/capability/version status and the last 50 operations. `?view=preview&page=1` returns the import preview with a SHA-256 fingerprint of the validated remote data.
 - `POST /api/integrations/spoolman`: discriminated `action`: `IMPORT` with `data={remoteId,previewHash,authority?,localSpoolId?}`, `SYNC` with `spoolId`, `UNLINK` with `data={spoolId,ownership:"NATIVE",openingBalance}`, or `OPERATION` with `data={operationId,action:"SEND"|"CONFIRM_APPLIED"|"CONFIRM_NOT_APPLIED"}`. Explicit linking to an existing spool requires the same already-linked filament identity. Reassigning a stable external ID is rejected.
-- `GET /api/integrations/bambubuddy`: safe printer/link status; optional `printId`. `?view=logs&printerId=...&page=1` pages through the selected printer's remote logs.
-- `POST /api/integrations/bambubuddy`: `LINK_PRINTER` (`printerId`, nullable `remoteId`), `SYNC_PRINTER` (`printerId`), `MAP_TRAY` (`printerId`, `slot` as `ams:tray`, nullable `spoolId`), `ATTACH` (`printId`, `remoteLogId`), `SYNC_PRINT` (`printId`), or `IMPORT` (`printId`, `previewHash`, validated `outcome`). Only confirmed terminal records may import an outcome.
+- `GET /api/integrations/bambubuddy`: safe printer/link status; optional `printId` and `partId` (required together for multipart link status). `?view=logs&printerId=...&page=1` pages through the selected printer's remote logs.
+- `POST /api/integrations/bambubuddy`: `LINK_PRINTER` (`printerId`, nullable `remoteId`), `SYNC_PRINTER` (`printerId`), `MAP_TRAY` (`printerId`, `slot` as `ams:tray`, nullable `spoolId`), `ATTACH` (`printId`, `partId`, `remoteLogId`), `SYNC_PRINT` (`printId`, `partId`), or `IMPORT` (`printId`, `previews: [{partId, previewHash}]`, validated `outcome`). Only confirmed terminal records may import an outcome.
 
 Errors use `INTEGRATION_DISABLED`, `INTEGRATION_CONFIG`, `INTEGRATION_UNAVAILABLE`, `INTEGRATION_CONTRACT`, or `INTEGRATION_CONFLICT`; remote HTTP failures are classified without forwarding response bodies or connection details. Native mutations of externally owned stock return `STOCK_OWNED_EXTERNALLY`.
 
@@ -166,3 +166,10 @@ one parent print. The CSV `parts` column contains per-part printer, plate, durat
 For multipart outcomes/corrections, supply `parts: [{ partId, durationSeconds }]` for every part, plus the
 existing root `filaments` list covering every usage ID. Root `durationSeconds` must equal the part sum. Unknown,
 missing, or duplicate part IDs are rejected before stock changes. All parts share the root outcome status.
+
+For one-part prints, Bambuddy attachment/status/synchronization may omit `partId`, and imports may still use
+the legacy singular `previewHash`. Multipart imports require a preview for every linked part and actuals for
+all parts, including unlinked manual parts. Preview hashes, terminal states, durations, and material totals
+are checked within the same transaction that records the outcome and stock changes. Any failed linked run
+requires a shared `FAILED` status, including manual recording and later corrections. Attaching after an
+outcome has been recorded is rejected. Repeated imports are idempotent and never undo later corrections.

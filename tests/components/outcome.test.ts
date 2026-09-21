@@ -51,7 +51,7 @@ it('requires a failure reason only after choosing a failed outcome', async () =>
     retryOf: null,
     retries: [],
   };
-  job.parts = [{ ...job, id: 'part', position: 0 }];
+  job.parts = [{ ...job, id: 'part', position: 0, bambuLinked: false }];
   const wrapper = await mountSuspended(Outcome, { props: { job } });
   expect(wrapper.text()).not.toContain('Fehlergrund');
   wrapper.findComponent({ name: 'USelect' }).vm.$emit('update:modelValue', 'FAILED');
