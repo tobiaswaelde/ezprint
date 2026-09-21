@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { calculateActualPrintCost } from '../shared/domain/print-outcome';
+import { calculateActualPrintPartsCost, calculateActualPrintCost } from '../shared/domain/print-outcome';
 import {
   createPrintOutcomeCorrectionSchema,
   createPrintOutcomeSchema,
@@ -78,4 +78,31 @@ describe('actual print costs', () => {
     });
     expect(correction.error?.issues[0]?.message).toBe(messages.correctionNoteRequired);
   });
+});
+
+it('calculates actual machine time independently for each part using frozen rates', () => {
+  const parts = [
+    { ...source, id: 'a' },
+    {
+      ...source,
+      id: 'b',
+      snapshot: { ...source.snapshot, printerHourlyRate: '2' },
+      filamentUsages: [{ id: 'usage-b', name: 'PLA', costPerGram: '0.03' }],
+    },
+  ];
+  const actual = printOutcomeSchema.parse({
+    ...input,
+    durationSeconds: 5400,
+    parts: [
+      { partId: 'a', durationSeconds: 1800 },
+      { partId: 'b', durationSeconds: 3600 },
+    ],
+    filaments: [...input.filaments, { usageId: 'usage-b', usedGrams: '20' }],
+  });
+  const result = calculateActualPrintPartsCost({ quantity: 2, currency: 'EUR', parts }, actual);
+  expect(result.totalCost).toBe('4.245');
+  expect(result.costPerUnit).toBe('2.1225');
+  expect(result.calculationVersion).toBe('actual-2');
+  expect(() => calculateActualPrintPartsCost({ quantity: 2, currency: 'EUR', parts }, input)).toThrow();
+  expect(printOutcomeSchema.safeParse({ ...actual, durationSeconds: 1 }).success).toBe(false);
 });

@@ -4,6 +4,7 @@ import { componentSchema, customerSchema, settingsSchema } from '../shared/schem
 import { featureSettingsSchema } from '../shared/schemas/features';
 import {
   printDraftFormSchema,
+  printDraftSchema,
   printListQuerySchema,
   printWorkflowUpdateSchema,
 } from '../shared/schemas/prints';
@@ -134,4 +135,25 @@ describe('application form validation', () => {
     expect(printWorkflowUpdateSchema.safeParse({ paid: true }).success).toBe(true);
     expect(printWorkflowUpdateSchema.safeParse({}).success).toBe(false);
   });
+});
+
+it('normalizes legacy drafts and validates every explicit print part', () => {
+  const part = {
+    printerId: 'printer',
+    buildPlateId: 'plate',
+    hotends: [{ componentId: 'hotend', durationSeconds: 3600 }],
+    filaments: [{ filamentId: 'filament', usedGrams: '10' }],
+  };
+  const legacy = { name: 'Print', ...part };
+  expect(printDraftSchema.parse(legacy).parts).toHaveLength(1);
+  const multiple = printDraftSchema.parse({
+    name: 'Print',
+    parts: [part, { ...part, printerId: 'other', buildPlateId: 'other-plate' }],
+  });
+  expect(multiple.parts).toHaveLength(2);
+  expect(multiple.printerId).toBe('printer');
+  expect(printDraftSchema.safeParse({ ...legacy, parts: [] }).success).toBe(false);
+  expect(printDraftSchema.safeParse({ ...legacy, parts: [{ ...part, buildPlateId: '' }] }).success).toBe(
+    false,
+  );
 });

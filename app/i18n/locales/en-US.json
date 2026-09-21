@@ -256,7 +256,10 @@
     "formulaVersion": "Formula version",
     "quantity": "Quantity",
     "quantityHelp": "1–1,000,000 identical parts. Duration and material remain totals for the entire run.",
-    "costPerUnit": "Cost per unit"
+    "costPerUnit": "Cost per unit",
+    "part": "Part {number}",
+    "addPart": "Add print part",
+    "removePart": "Remove part {number}"
   },
   "dashboard": {
     "period": "Reporting period",
@@ -444,7 +447,9 @@
   },
   "querrykit": {
     "table": {
-      "search": { "placeholder": "Search prints" },
+      "search": {
+        "placeholder": "Search prints"
+      },
       "sorting": {
         "title": "Sort",
         "field": "Select field",
@@ -469,7 +474,9 @@
         "center": "Unpin",
         "visibility": "Toggle column visibility"
       },
-      "pagination": { "summary": "Showing {start}–{end} of {total}" }
+      "pagination": {
+        "summary": "Showing {start}–{end} of {total}"
+      }
     }
   },
   "report": {

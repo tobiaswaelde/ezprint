@@ -9,6 +9,13 @@
         t(`outcome.${job.outcome.status}`)
       }}</UBadge>
       <p>{{ dateTime(job.outcome.recordedAt) }} · {{ duration(job.outcome.durationSeconds) }}</p>
+      <p v-for="(part, index) in job.outcome.parts" :key="part.partId">
+        {{
+          t('prints.part', {
+            number: job.parts.findIndex((item: { id: string }) => item.id === part.partId) + 1 || index + 1,
+          })
+        }}: {{ duration(part.durationSeconds) }}
+      </p>
       <p v-if="job.outcome.failureReason" class="whitespace-pre-wrap">{{ job.outcome.failureReason }}</p>
       <p v-if="job.outcome.note" class="whitespace-pre-wrap">{{ job.outcome.note }}</p>
       <p>
@@ -56,9 +63,22 @@
         <UFormField name="status" :label="t('outcome.title')" required
           ><USelect v-model="form.status" :items="statusOptions" class="w-full"
         /></UFormField>
-        <UFormField name="durationSeconds" :label="t('outcome.duration')" required
+        <UFormField
+          v-if="job.parts.length === 1"
+          name="durationSeconds"
+          :label="t('outcome.duration')"
+          required
           ><UInput v-model.number="form.durationSeconds" type="number" min="0" step="1" class="w-full"
         /></UFormField>
+        <UFormField
+          v-for="(part, index) in form.parts"
+          :key="part.partId"
+          :name="`parts.${index}.durationSeconds`"
+          :label="`${t('prints.part', { number: index + 1 })} · ${t('outcome.duration')}`"
+          required
+        >
+          <UInput v-model.number="part.durationSeconds" type="number" min="0" step="1" class="w-full" />
+        </UFormField>
         <UFormField
           v-for="(line, index) in form.filaments"
           :key="line.usageId"
@@ -99,7 +119,11 @@ const props = defineProps<{ job: PrintJobDto }>();
 const emit = defineEmits<{ recorded: [job: PrintJobDto] }>();
 const { t } = useI18n();
 const { money, dateTime, duration } = useFormatting();
-const usageName = (id: string) => props.job.filamentUsages.find((usage) => usage.id === id)?.name;
+const usageName = (id: string) => {
+  const name = props.job.filamentUsages.find((usage) => usage.id === id)?.name;
+  const index = props.job.parts.findIndex((part) => part.filamentUsages.some((usage) => usage.id === id));
+  return props.job.parts.length > 1 ? `${t('prints.part', { number: index + 1 })} · ${name}` : name;
+};
 const error = ref('');
 const saving = ref(false);
 const correcting = ref(false);
@@ -108,6 +132,10 @@ const form = reactive({
   operationKey: crypto.randomUUID(),
   status: 'SUCCESS',
   durationSeconds: props.job.totalDurationSeconds,
+  parts:
+    props.job.parts.length > 1
+      ? props.job.parts.map((part) => ({ partId: part.id, durationSeconds: part.totalDurationSeconds }))
+      : undefined,
   filaments: props.job.filamentUsages.map((line) => ({ usageId: line.id, usedGrams: line.usedGrams })),
   failureReason: '',
   note: '',
@@ -134,6 +162,9 @@ function beginCorrection() {
   Object.assign(form, {
     status: outcome.status,
     durationSeconds: outcome.durationSeconds,
+    parts: outcome.parts
+      ? props.job.parts.map((part) => ({ ...outcome.parts!.find((actual) => actual.partId === part.id)! }))
+      : undefined,
     filaments: outcome.filaments.map((line) => ({ ...line })),
     failureReason: outcome.failureReason ?? '',
     note: '',
@@ -142,6 +173,13 @@ function beginCorrection() {
   });
   correcting.value = true;
 }
+watch(
+  () => form.parts,
+  (parts) => {
+    if (parts) form.durationSeconds = parts.reduce((total, part) => total + part.durationSeconds, 0);
+  },
+  { deep: true },
+);
 async function save() {
   saving.value = true;
   try {

@@ -20,6 +20,16 @@ export function createPrintOutcomeSchema(
   return z
     .object({
       status: outcomeStatusSchema,
+      parts: z
+        .array(
+          z.object({
+            partId: z.string().min(1),
+            durationSeconds: z.number().int().min(0).max(2147483647),
+          }),
+        )
+        .min(1)
+        .max(100)
+        .optional(),
       durationSeconds: z.number().int().min(0).max(2147483647),
       filaments: z
         .array(
@@ -48,6 +58,12 @@ export function createPrintOutcomeSchema(
         .transform((value) => value || null),
     })
     .superRefine((value, context) => {
+      if (
+        value.parts &&
+        (new Set(value.parts.map((part) => part.partId)).size !== value.parts.length ||
+          value.parts.reduce((total, part) => total + part.durationSeconds, 0) !== value.durationSeconds)
+      )
+        context.addIssue({ code: 'custom', path: ['parts'], message: messages.uniqueUsageRequired });
       if (value.status === 'FAILED' && !value.failureReason)
         context.addIssue({
           code: 'custom',

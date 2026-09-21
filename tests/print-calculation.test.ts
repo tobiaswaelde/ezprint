@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { calculatePrintCost } from '../shared/domain/print-calculation';
+import { aggregatePrintPartCosts, calculatePrintCost } from '../shared/domain/print-calculation';
 
 const input = {
   printer: {
@@ -73,4 +73,36 @@ describe('calculatePrintCost', () => {
       calculatePrintCost({ ...input, filaments: [{ ...input.filaments[0], usedGrams: '0' }] }),
     ).toThrow();
   });
+});
+
+it('aggregates ordered parts without conflating repeated sources or multiplying quantity', () => {
+  const first = calculatePrintCost(input);
+  const second = calculatePrintCost({ ...input, printer: { ...input.printer, purchasePrice: '2400' } });
+  const result = aggregatePrintPartCosts(
+    [
+      { id: 'one', costs: first },
+      { id: 'two', costs: second },
+    ],
+    2,
+  );
+  expect(result.calculationVersion).toBe('4');
+  expect(result.totalDurationSeconds).toBe(10800);
+  expect(result.totalCost).toBe('4.82035');
+  expect(result.costPerUnit).toBe('2.410175');
+  expect(result.lines.filter((line) => line.sourceId === 'p')).toMatchObject([
+    { partId: 'one', cost: '0.3' },
+    { partId: 'two', cost: '0.6' },
+  ]);
+  expect(first.calculationVersion).toBe('3');
+  expect(first.lines.some((line) => line.partId)).toBe(false);
+  expect(() => aggregatePrintPartCosts([], 1)).toThrow();
+  expect(() =>
+    aggregatePrintPartCosts(
+      [
+        { id: 'a', costs: first },
+        { id: 'b', costs: { ...second, currency: 'USD' } },
+      ],
+      1,
+    ),
+  ).toThrow();
 });

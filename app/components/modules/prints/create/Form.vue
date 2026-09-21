@@ -2,7 +2,7 @@
   <UForm
     :id="formId"
     ref="formRef"
-    :schema="printDraftFormSchema"
+    :schema="multipartPrintDraftFormSchema"
     :state="form"
     class="space-y-6"
     @submit="persist"
@@ -50,147 +50,80 @@
             <UFormField name="customerId" :label="t('nav.customers')">
               <CommonEntitySelect v-model="form.customerId" resource="customers" nullable />
             </UFormField>
-            <UFormField name="printerId" :label="t('nav.printers')" required>
-              <CommonEntitySelect v-model="form.printerId" resource="printers" />
-            </UFormField>
-            <UFormField name="buildPlateId" :label="t('master.buildPlate')" required>
-              <CommonEntitySelect
-                v-model="form.buildPlateId"
-                resource="components"
-                :query="{ printerId: form.printerId, type: 'BUILD_PLATE' }"
-                :defaults="{ type: 'BUILD_PLATE', printerIds: [form.printerId] }"
-                :disabled="!form.printerId"
-                :aria-label="t('master.buildPlate')"
+          </div>
+          <div class="mt-5 space-y-4">
+            <UCard
+              v-for="(part, index) in form.parts"
+              :key="part.key"
+              role="group"
+              :aria-label="t('prints.part', { number: index + 1 })"
+            >
+              <template #header
+                ><div class="flex items-center justify-between gap-3">
+                  <h3 class="font-semibold">{{ t('prints.part', { number: index + 1 }) }}</h3>
+                  <UButton
+                    icon="i-tabler-trash"
+                    color="error"
+                    variant="ghost"
+                    :aria-label="t('prints.removePart', { number: index + 1 })"
+                    :disabled="form.parts.length === 1"
+                    @click="form.parts.splice(index, 1)"
+                  /></div
+              ></template>
+              <ModulesPrintsPartForm
+                v-model="form.parts[index]!"
+                :part-index="index"
+                section="general"
+                @error="error = $event"
               />
-            </UFormField>
+            </UCard>
+            <UButton
+              icon="i-tabler-plus"
+              :label="t('prints.addPart')"
+              @click="form.parts.push(createPrintPartForm())"
+            />
           </div>
         </template>
 
         <template #hotends>
           <div class="space-y-4">
-            <div class="flex items-center justify-between gap-3">
-              <div>
-                <h3 class="font-semibold">{{ t('prints.hotends') }}</h3>
-                <p class="text-sm text-muted">{{ t('prints.hotendsHelp') }}</p>
-              </div>
-              <UButton icon="i-tabler-plus" size="sm" :label="t('common.add')" @click="addHotend" />
-            </div>
-            <div
-              v-for="(hotend, index) in form.hotends"
-              :key="index"
-              class="grid items-start gap-3 rounded-lg border border-default p-3 md:grid-cols-[1fr_8rem_8rem_auto]"
+            <UCard
+              v-for="(part, index) in form.parts"
+              :key="part.key"
+              role="group"
+              :aria-label="t('prints.part', { number: index + 1 })"
             >
-              <UFormField :name="`hotends.${index}.componentId`" :label="t('master.hotend')" required>
-                <CommonEntitySelect
-                  v-model="hotend.componentId"
-                  resource="components"
-                  :query="{ printerId: form.printerId, type: 'HOTEND' }"
-                  :defaults="{ type: 'HOTEND', printerIds: [form.printerId] }"
-                  :disabled="!form.printerId"
-                  :aria-label="t('master.hotend')"
-                />
-              </UFormField>
-              <UFormField :name="`hotends.${index}.hours`" :label="t('prints.hours')">
-                <UInput
-                  v-model="hotend.hours"
-                  class="w-full"
-                  type="number"
-                  min="0"
-                  step="1"
-                  icon="i-tabler-clock-hour-4"
-                >
-                  <template #trailing><span class="text-xs text-muted">h</span></template>
-                </UInput>
-              </UFormField>
-              <UFormField :name="`hotends.${index}.minutes`" :label="t('prints.minutes')">
-                <UInput
-                  v-model="hotend.minutes"
-                  class="w-full"
-                  type="number"
-                  min="0"
-                  max="59"
-                  step="1"
-                  icon="i-tabler-clock"
-                >
-                  <template #trailing><span class="text-xs text-muted">min</span></template>
-                </UInput>
-              </UFormField>
-              <UButton
-                class="md:mt-6"
-                color="error"
-                variant="ghost"
-                icon="i-tabler-trash"
-                :aria-label="t('common.delete')"
-                :disabled="form.hotends.length === 1"
-                @click="form.hotends.splice(index, 1)"
+              <template #header
+                ><h3 class="font-semibold">{{ t('prints.part', { number: index + 1 }) }}</h3></template
+              >
+              <ModulesPrintsPartForm
+                v-model="form.parts[index]!"
+                :part-index="index"
+                section="hotends"
+                @error="error = $event"
               />
-            </div>
+            </UCard>
           </div>
         </template>
 
         <template #materials>
-          <div class="space-y-6">
-            <UFormField name="otherComponentIds" :label="t('prints.otherComponents')">
-              <CommonEntitySelect
-                v-model="form.otherComponentIds"
-                :aria-label="t('prints.otherComponents')"
-                resource="components"
-                multiple
-                :query="{ printerId: form.printerId, type: 'OTHER' }"
-                :defaults="{ type: 'OTHER', printerIds: [form.printerId] }"
-                :disabled="!form.printerId"
-              />
-            </UFormField>
-
-            <div class="space-y-4">
-              <div class="flex items-center justify-between gap-3">
-                <h3 class="font-semibold">{{ t('nav.filaments') }}</h3>
-                <UButton icon="i-tabler-plus" size="sm" :label="t('common.add')" @click="addFilament" />
-              </div>
-              <div
-                v-for="(filament, index) in form.filaments"
-                :key="index"
-                class="grid items-start gap-3 rounded-lg border border-default p-3"
-                :class="
-                  spoolManagementEnabled
-                    ? 'md:grid-cols-[1fr_1fr_10rem_auto]'
-                    : 'md:grid-cols-[1fr_10rem_auto]'
-                "
+          <div class="space-y-4">
+            <UCard
+              v-for="(part, index) in form.parts"
+              :key="part.key"
+              role="group"
+              :aria-label="t('prints.part', { number: index + 1 })"
+            >
+              <template #header
+                ><h3 class="font-semibold">{{ t('prints.part', { number: index + 1 }) }}</h3></template
               >
-                <UFormField :name="`filaments.${index}.filamentId`" :label="t('nav.filaments')" required>
-                  <CommonFilamentSelect v-model="filament.filamentId" class="w-full" />
-                </UFormField>
-                <UFormField
-                  v-if="spoolManagementEnabled"
-                  :name="`filaments.${index}.spoolId`"
-                  :label="t('nav.spools')"
-                  required
-                >
-                  <CommonSpoolSelect v-model="filament.spoolId" :filament-id="filament.filamentId" />
-                </UFormField>
-                <UFormField :name="`filaments.${index}.usedGrams`" :label="t('prints.usedGrams')" required>
-                  <UInput
-                    v-model="filament.usedGrams"
-                    class="w-full"
-                    type="number"
-                    min="0.01"
-                    step="0.01"
-                    icon="i-tabler-scale"
-                  >
-                    <template #trailing><span class="text-xs text-muted">g</span></template>
-                  </UInput>
-                </UFormField>
-                <UButton
-                  class="md:mt-6"
-                  color="error"
-                  variant="ghost"
-                  icon="i-tabler-trash"
-                  :aria-label="t('common.delete')"
-                  :disabled="form.filaments.length === 1"
-                  @click="form.filaments.splice(index, 1)"
-                />
-              </div>
-            </div>
+              <ModulesPrintsPartForm
+                v-model="form.parts[index]!"
+                :part-index="index"
+                section="materials"
+                @error="error = $event"
+              />
+            </UCard>
           </div>
         </template>
 
@@ -223,7 +156,7 @@
 <script setup lang="ts">
 import type { StepperItem } from '@nuxt/ui';
 import type { PrintCalculationResult } from '#shared/domain/print-calculation';
-import { printDraftFormSchema } from '#shared/schemas/prints';
+import { multipartPrintDraftFormSchema } from '#shared/schemas/prints';
 import type { PrintJobDto } from '#shared/types/prints';
 
 const emit = defineEmits<{
@@ -261,11 +194,7 @@ const form = reactive({
   salesValue: '',
   customerId: initialCustomerId as string | null,
   seriesId: initialSeriesId as string | null,
-  printerId: '',
-  buildPlateId: '',
-  hotends: [{ componentId: '', hours: 1, minutes: 0 }],
-  otherComponentIds: [] as string[],
-  filaments: [{ filamentId: '', spoolId: undefined as string | undefined, usedGrams: '1' }],
+  parts: [createPrintPartForm()],
   notes: '',
 });
 
@@ -276,11 +205,18 @@ const stepperItems = computed<StepperItem[]>(() => [
   { slot: 'review', title: t('prints.steps.review'), icon: 'i-tabler-calculator' },
 ]);
 
-const fieldsByStep: Array<Array<keyof typeof form>> = [
-  ['name', 'quantity', 'salesValue', 'seriesId', 'customerId', 'printerId', 'buildPlateId'],
-  ['hotends'],
-  ['otherComponentIds', 'filaments'],
-];
+const fieldsByStep = computed(() => [
+  [
+    'name',
+    'quantity',
+    'salesValue',
+    'seriesId',
+    'customerId',
+    ...form.parts.flatMap((_, index) => [`parts.${index}.printerId`, `parts.${index}.buildPlateId`]),
+  ],
+  form.parts.map((_, index) => `parts.${index}.hotends`),
+  form.parts.flatMap((_, index) => [`parts.${index}.otherComponentIds`, `parts.${index}.filaments`]),
+]);
 
 function payload() {
   return {
@@ -289,53 +225,13 @@ function payload() {
     salesValue: form.salesValue || null,
     customerId: form.customerId,
     seriesId: printSeriesEnabled.value ? form.seriesId : null,
-    printerId: form.printerId,
-    buildPlateId: form.buildPlateId,
-    hotends: form.hotends.map((entry) => ({
-      componentId: entry.componentId,
-      durationSeconds: Number(entry.hours) * 3600 + Number(entry.minutes) * 60,
-    })),
-    otherComponentIds: form.otherComponentIds,
-    filaments: form.filaments.map((entry) => ({
-      filamentId: entry.filamentId,
-      ...(spoolManagementEnabled.value ? { spoolId: entry.spoolId } : {}),
-      usedGrams: entry.usedGrams,
-    })),
+    parts: form.parts.map((part) => printPartPayload(part, spoolManagementEnabled.value)),
     notes: form.notes,
   };
 }
 
-function addHotend() {
-  form.hotends.push({ componentId: '', hours: 1, minutes: 0 });
-}
-
-function addFilament() {
-  form.filaments.push({ filamentId: '', spoolId: undefined as string | undefined, usedGrams: '1' });
-}
-
-async function applyComponentDefaults() {
-  const printerId = form.printerId;
-  form.buildPlateId = '';
-  form.hotends = [{ componentId: '', hours: 1, minutes: 0 }];
-  form.otherComponentIds = [];
-  let defaults;
-  try {
-    defaults = await loadPrintComponentDefaults(printerId);
-  } catch (reason) {
-    if (form.printerId === printerId) error.value = String(reason);
-    return;
-  }
-  if (form.printerId !== printerId) return;
-  form.buildPlateId ||= defaults.buildPlateId;
-  if (!form.hotends.some((entry) => entry.componentId))
-    form.hotends = defaults.hotendIds.length
-      ? defaults.hotendIds.map((componentId) => ({ componentId, hours: 1, minutes: 0 }))
-      : [{ componentId: '', hours: 1, minutes: 0 }];
-  if (!form.otherComponentIds.length) form.otherComponentIds = defaults.otherComponentIds;
-}
-
 async function nextStep() {
-  const fields = fieldsByStep[currentStep.value];
+  const fields = fieldsByStep.value[currentStep.value];
   if (!fields) return;
 
   try {
@@ -361,7 +257,7 @@ async function load() {
 }
 
 async function preview() {
-  if (!printDraftFormSchema.safeParse(form).success) {
+  if (!multipartPrintDraftFormSchema.safeParse(form).success) {
     costs.value = null;
     return;
   }
@@ -392,14 +288,6 @@ async function persist() {
     saving.value = false;
   }
 }
-
-watch(
-  () => form.printerId,
-  () => {
-    if (hydrating) return;
-    applyComponentDefaults();
-  },
-);
 
 watch(
   form,

@@ -38,7 +38,6 @@ async function api<T>(page: Page, path: string, method: 'POST' | 'PATCH', body?:
 }
 
 async function capture(page: Page, name: string) {
-  await page.waitForLoadState('networkidle');
   await page.evaluate(() => document.fonts.ready);
   await page.waitForTimeout(200);
   await page.screenshot({
@@ -66,7 +65,7 @@ async function captureSignIn(browser: Browser) {
 async function selectOption(page: Page, label: string, option: string) {
   await page.getByLabel(label, { exact: true }).click();
   await page.getByRole('option', { name: option, exact: true }).click();
-  await expect(page.getByRole('listbox')).toBeHidden();
+  await expect(page.getByRole('listbox')).toHaveCount(0);
 }
 
 let fake: Awaited<ReturnType<typeof startFakeIntegrations>>;
@@ -384,6 +383,17 @@ test('regenerates every application screenshot used by the documentation', async
   await expect(dialog.getByText('Cost per unit', { exact: true })).toBeVisible();
   await expect(dialog.getByText('Planned margin', { exact: true })).toBeVisible();
   await capture(page, 'new-print-review.jpg');
+  for (let step = 0; step < 3; step++)
+    await dialog.getByRole('button', { name: 'Back', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Add print part' }).click();
+  const secondPart = dialog.getByRole('group', { name: 'Part 2', exact: true });
+  await secondPart.getByLabel('Printers', { exact: true }).click();
+  await page.getByRole('option', { name: 'Workshop Prusa MK4', exact: true }).click();
+  await expect(page.getByRole('listbox')).toHaveCount(0);
+  await secondPart.getByLabel('Build plate', { exact: true }).click();
+  await page.getByRole('option', { name: 'Textured PEI plate', exact: true }).click();
+  await expect(page.getByRole('listbox')).toHaveCount(0);
+  await capture(page, 'new-print-parts.jpg');
   await page.keyboard.press('Escape');
 
   await page.goto(`/prints/${draft.id}`);

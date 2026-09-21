@@ -34,17 +34,19 @@ The `/prints/new` route opens the same guided create dialog and normalizes the U
 
 The dialog validates the current section before moving forward:
 
-1. **General:** enter a name, optional customer, printer, and one compatible build plate.
-2. **Duration:** select at least one compatible hotend and enter nonnegative hours plus 0–59 minutes. Use
+1. **General:** enter a name, quantity of complete products, optional customer, and sales value. Each print
+   part has its own printer and compatible build plate. Use **Add print part** for additional machine runs;
+   at least one part must remain.
+2. **Duration:** for each part, select at least one compatible hotend and enter nonnegative hours plus 0–59 minutes. Use
    **Add** to add another hotend; each hotend must be unique and have positive total duration.
-3. **Material:** optionally select compatible **Other components**, then select one or more unique filaments and
+3. **Material:** for each part, optionally select compatible **Other components**, then select one or more unique filaments and
    enter a positive used weight for each.
 4. **Review:** add an optional note and verify the live cost breakdown before selecting **Save draft**.
 
-Customer, printer, component, filament, series, and spool selectors are searchable within their currently loaded
-entries. Existing inventory loading limits still apply.
+Selectors search on the server and load additional pages on demand. Their **+** buttons create an entry in a
+nested dialog, then select it without losing the print inputs.
 
-Changing a printer resets component selections because compatibility may differ. **Back** preserves valid values,
+Changing a part’s printer resets only that part’s component selections because compatibility may differ. **Back** preserves valid values,
 while **Cancel** closes the dialog without creating a print.
 
 ![Final create step with live printer, component, filament, electricity, and total costs](/screenshots/new-print-review.jpg)
@@ -102,3 +104,16 @@ Use **Retry print** after a failure to create an editable draft at current inven
 Optionally enter the total **Sales value** for the run in the instance currency. Blank means unknown, and zero is an explicit zero sale. The preview shows planned margin and per-unit values. Leaving Draft freezes the entered value. A successful result shows realized revenue and actual margin; failed runs contribute zero realized revenue and their consumption remains a separate waste cost. Negative margins are supported. Duplication, retry, and repeat orders always clear sales value to prevent double counting.
 
 This is a cost and revenue comparison, not an invoice, tax, receivables, or payment ledger. ezPrint does not split net and gross taxes or infer revenue from its paid flag.
+
+## Multiple machine runs in one print
+
+![Two print parts with individual printer and build plate selectors](/screenshots/new-print-parts.jpg)
+
+Parts share one customer, quantity, sales value, workflow status, payment, and success/failure outcome. Quantity
+counts complete products, not parts. Costs and machine time are summed across parts; parallel machine time is
+still added rather than treated as elapsed wall-clock time. The draft editor can add or remove parts, and each
+part retains its own printer, plate, hotends, components, and material inputs.
+
+Record actual duration separately for every part and actual grams for every material usage. A correction updates
+the combined outcome and books only material differences in one transaction. Repeat, duplicate, and retry copy
+all parts into a new draft. Printer filters match a print when any part uses the selected printer.

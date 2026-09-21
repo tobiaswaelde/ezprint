@@ -16,3 +16,7 @@ Open a done print, choose **Cost report**, then **Print / Save as PDF**. Select 
 ![A4 cost report with stored prices, planned totals, and optional actual values](/screenshots/cost-report.jpg)
 
 The report follows the active German or English application locale and instance currency. It includes stored printer and component rates, filament quantities and spool codes, planned and actual totals, outcome details, and optional sales and margin. Currency display is rounded for readability; CSV retains exact decimals. This is a cost report, not an invoice, offer, receipt, or tax document. Archived done prints remain reportable from their detail page. Both export endpoints require authentication. Downloaded files may contain customer names, notes, and commercially sensitive prices; share them deliberately.
+
+For multipart prints, the printer column lists every part's frozen printer name. The `parts` column contains a
+JSON array of per-part printer, build plate, planned duration, and cost. Parent totals and quantity still appear
+only once. The PDF report includes separate source tables for every part.

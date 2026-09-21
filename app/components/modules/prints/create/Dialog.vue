@@ -1,12 +1,10 @@
 <template>
   <UModal
     v-model:open="open"
-    scrollable
     :title="t('prints.new')"
     :description="t('prints.createDescription')"
     :ui="{
       content: 'sm:max-w-4xl',
-      body: 'max-h-[calc(100dvh-10rem)] overflow-y-auto',
     }"
   >
     <template v-if="$slots.trigger" #default>

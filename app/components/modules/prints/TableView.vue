@@ -147,7 +147,13 @@
               </NuxtLink>
               <span v-else>—</span>
             </td>
-            <td class="px-4 py-2.5">{{ item.printer.name }}</td>
+            <td class="px-4 py-2.5">
+              {{
+                [...new Set(item.parts.map((part: { printer: { name: string } }) => part.printer.name))].join(
+                  ', ',
+                )
+              }}
+            </td>
             <td class="px-4 py-2.5">{{ duration(item.totalDurationSeconds) }}</td>
             <td class="px-4 py-2.5">
               {{ money(item.totalCost, item.currency) }}

@@ -18,7 +18,7 @@ describe('Query Kit print filters', () => {
     expect(compilePrintWhere(input.where!)).toEqual({
       AND: [
         { status: { in: ['PRINTING', 'DONE'] } },
-        { printerId: { notIn: ['printer-1'] } },
+        { parts: { none: { printerId: { in: ['printer-1'] } } } },
         { archivedAt: null },
         {
           OR: [

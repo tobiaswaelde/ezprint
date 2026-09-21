@@ -1,7 +1,11 @@
 import Decimal from 'decimal.js';
 import type { PrintOutcomeInput } from '../schemas/print-outcomes';
 import { printOutcomeSchema } from '../schemas/print-outcomes';
-import type { PrintCalculationResult, CostBreakdownLine } from './print-calculation';
+import {
+  aggregatePrintPartCosts,
+  type PrintCalculationResult,
+  type CostBreakdownLine,
+} from './print-calculation';
 import { canonicalDecimal } from '../utils/decimal';
 
 export interface OutcomeCostSources {
@@ -97,4 +101,29 @@ export function calculateActualPrintCost(
     costPerUnit: canonicalDecimal(total.div(source.quantity)),
     lines,
   };
+}
+
+export function calculateActualPrintPartsCost(
+  source: { quantity: number; currency: string; parts: Array<OutcomeCostSources & { id: string }> },
+  input: PrintOutcomeInput,
+): PrintCalculationResult {
+  if (source.parts.length === 1 && !input.parts) return calculateActualPrintCost(source.parts[0]!, input);
+  if (
+    !input.parts ||
+    input.parts.length !== source.parts.length ||
+    source.parts.some((part) => !input.parts!.some((actual) => actual.partId === part.id))
+  )
+    throw new Error('Actual duration must cover every print part exactly once');
+  const costs = source.parts.map((part) => ({
+    id: part.id,
+    costs: calculateActualPrintCost(part, {
+      ...input,
+      parts: undefined,
+      durationSeconds: input.parts!.find((actual) => actual.partId === part.id)!.durationSeconds,
+      filaments: input.filaments.filter((line) =>
+        part.filamentUsages.some((usage) => usage.id === line.usageId),
+      ),
+    }),
+  }));
+  return aggregatePrintPartCosts(costs, source.quantity, 'actual-2');
 }

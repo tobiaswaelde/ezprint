@@ -82,6 +82,7 @@ model Printer {
   archivedAt            DateTime?
   components            PrinterComponent[]
   printJobs             PrintJob[]
+  printParts            PrintPart[]
   createdAt             DateTime           @default(now())
   updatedAt             DateTime           @updatedAt
 
@@ -164,6 +165,7 @@ model Filament {
 }
 
 model PrintJob {
+  parts PrintPart[]
   bambuLink BambuPrintLink?
   seriesId             String?
   series               PrintSeries? @relation(fields: [seriesId], references: [id], onDelete: Restrict)
@@ -205,7 +207,25 @@ model PrintJob {
   @@index([paidAt])
 }
 
+model PrintPart {
+  id String @id @default(cuid())
+  printJobId String
+  printJob PrintJob @relation(fields: [printJobId], references: [id], onDelete: Cascade)
+  position Int
+  printerId String
+  printer Printer @relation(fields: [printerId], references: [id], onDelete: Restrict)
+  totalDurationSeconds Int
+  snapshotJson String?
+  componentUsages PrintComponentUsage[]
+  filamentUsages PrintFilamentUsage[]
+
+  @@unique([printJobId, position])
+  @@index([printerId])
+}
+
 model PrintComponentUsage {
+  partId String
+  part PrintPart @relation(fields: [partId], references: [id], onDelete: Cascade)
   id                     String    @id @default(cuid())
   printJobId             String
   printJob               PrintJob  @relation(fields: [printJobId], references: [id], onDelete: Cascade)
@@ -225,6 +245,8 @@ model PrintComponentUsage {
 }
 
 model PrintFilamentUsage {
+  partId String
+  part PrintPart @relation(fields: [partId], references: [id], onDelete: Cascade)
   id             String   @id @default(cuid())
   printJobId     String
   printJob       PrintJob @relation(fields: [printJobId], references: [id], onDelete: Cascade)

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { bookPrintStock } from './spoolman';
 import type { PrintJobDto } from '#shared/types/prints';
 import { componentSchema } from '#shared/schemas/master-data';
@@ -5,11 +6,11 @@ import { summarizePrints, emptyPrintSummary } from '#shared/domain/print-summary
 import { calculatePrintFinancials } from '#shared/domain/print-financials';
 import Decimal from 'decimal.js';
 import { spoolBalance, StockDecimal } from './spools';
-import { calculateActualPrintCost } from '#shared/domain/print-outcome';
+import { calculateActualPrintPartsCost } from '#shared/domain/print-outcome';
 import { printOutcomeSchema, printOutcomeCorrectionSchema } from '#shared/schemas/print-outcomes';
 import type { PrintCalculationResult } from '#shared/domain/print-calculation';
 import type { Prisma } from '../../prisma/generated/client/client';
-import { calculatePrintCost } from '#shared/domain/print-calculation';
+import { aggregatePrintPartCosts, calculatePrintCost } from '#shared/domain/print-calculation';
 import type { PrintDraftInput, PrintWhere, PrintWhereLeaf } from '#shared/schemas/prints';
 import {
   printStatusSchema,
@@ -26,6 +27,7 @@ import { requireFeature } from '../utils/features';
 
 type Transaction = Prisma.TransactionClient;
 const printInclude = {
+  parts: { include: { printer: true }, orderBy: { position: 'asc' as const } },
   bambuLink: true,
   customer: true,
   printer: true,
@@ -41,11 +43,41 @@ const printInclude = {
 };
 type PrintWithSnapshot = Prisma.PrintJobGetPayload<{ include: typeof printInclude }>;
 
+function snapshotDto(snapshot: PrintWithSnapshot['snapshot']): PrintJobDto['snapshot'] {
+  const exact = snapshot?.calculationJson
+    ? (JSON.parse(snapshot.calculationJson) as PrintCalculationResult)
+    : null;
+  return (
+    snapshot && {
+      salesValue: snapshot.salesValue,
+      quantity: snapshot.quantity,
+      costPerUnit: canonicalDecimal((snapshot.costPerUnit ?? snapshot.totalCost).toString()),
+      electricityPricePerKwh: canonicalDecimal(snapshot.electricityPricePerKwh.toString()),
+      printerName: snapshot.printerName,
+      printerPurchasePrice: canonicalDecimal(snapshot.printerPurchasePrice.toString()),
+      printerExpectedLifetimeHours: canonicalDecimal(snapshot.printerExpectedLifetimeHours.toString()),
+      printerHourlyRate:
+        exact?.lines.find((line) => line.category === 'printer')?.unitRate ??
+        canonicalDecimal(snapshot.printerHourlyRate.toString()),
+      printerPowerWatts: snapshot.printerPowerWatts,
+      printerCost: exact?.printerCost ?? canonicalDecimal(snapshot.printerCost.toString()),
+      componentCost: exact?.componentCost ?? canonicalDecimal(snapshot.componentCost.toString()),
+      filamentCost: exact?.filamentCost ?? canonicalDecimal(snapshot.filamentCost.toString()),
+      electricityCost: exact?.electricityCost ?? canonicalDecimal(snapshot.electricityCost.toString()),
+      totalCost: exact?.totalCost ?? canonicalDecimal(snapshot.totalCost.toString()),
+      currency: snapshot.currency,
+      formulaVersion: snapshot.formulaVersion,
+      calculatedAt: new Date(snapshot.calculatedAt).toISOString(),
+    }
+  );
+}
+
 function printDto(value: PrintWithSnapshot): PrintJobDto {
   const exact = value.snapshot?.calculationJson
     ? (JSON.parse(value.snapshot.calculationJson) as PrintCalculationResult)
     : null;
-  const exactLine = (id: string) => exact?.lines.find((line) => line.sourceId === id);
+  const exactLine = (id: string, partId: string) =>
+    exact?.lines.find((line) => line.sourceId === id && (!line.partId || line.partId === partId));
   const history = value.outcome
     ? [{ ...value.outcome, revision: 1 }, ...[...value.outcome.corrections].reverse()].map((entry) => ({
         ...printOutcomeSchema.parse(JSON.parse(entry.inputSnapshot)),
@@ -54,7 +86,7 @@ function printDto(value: PrintWithSnapshot): PrintJobDto {
         costs: JSON.parse(entry.costSnapshot) as PrintCalculationResult,
       }))
     : [];
-  return {
+  const result = {
     id: value.id,
     seriesId: value.seriesId,
     series: value.series
@@ -101,9 +133,11 @@ function printDto(value: PrintWithSnapshot): PrintJobDto {
       name: entry.componentName,
       purchasePrice: canonicalDecimal(entry.purchasePrice.toString()),
       expectedLifetimeHours: canonicalDecimal(entry.expectedLifetimeHours.toString()),
-      hourlyRate: exactLine(entry.componentId)?.unitRate ?? canonicalDecimal(entry.hourlyRate.toString()),
+      hourlyRate:
+        exactLine(entry.componentId, entry.partId)?.unitRate ?? canonicalDecimal(entry.hourlyRate.toString()),
       appliedDurationSeconds: entry.appliedDurationSeconds,
-      lineCost: exactLine(entry.componentId)?.cost ?? canonicalDecimal(entry.lineCost.toString()),
+      lineCost:
+        exactLine(entry.componentId, entry.partId)?.cost ?? canonicalDecimal(entry.lineCost.toString()),
     })),
     filamentUsages: value.filamentUsages.map((entry) => ({
       id: entry.id,
@@ -116,35 +150,37 @@ function printDto(value: PrintWithSnapshot): PrintJobDto {
       purchasePrice: canonicalDecimal(entry.purchasePrice.toString()),
       netWeightGrams: canonicalDecimal(entry.netWeightGrams.toString()),
       costPerGram:
-        exactLine(entry.spoolId ?? entry.filamentId)?.unitRate ??
+        exactLine(entry.spoolId ?? entry.filamentId, entry.partId)?.unitRate ??
         canonicalDecimal(entry.costPerGram.toString()),
       usedGrams:
-        exactLine(entry.spoolId ?? entry.filamentId)?.quantity ??
+        exactLine(entry.spoolId ?? entry.filamentId, entry.partId)?.quantity ??
         canonicalDecimal(entry.usedGrams.toString()),
       lineCost:
-        exactLine(entry.spoolId ?? entry.filamentId)?.cost ?? canonicalDecimal(entry.lineCost.toString()),
+        exactLine(entry.spoolId ?? entry.filamentId, entry.partId)?.cost ??
+        canonicalDecimal(entry.lineCost.toString()),
     })),
-    snapshot: value.snapshot && {
-      salesValue: value.snapshot.salesValue,
-      quantity: value.snapshot.quantity,
-      costPerUnit: canonicalDecimal((value.snapshot.costPerUnit ?? value.snapshot.totalCost).toString()),
-      electricityPricePerKwh: canonicalDecimal(value.snapshot.electricityPricePerKwh.toString()),
-      printerName: value.snapshot.printerName,
-      printerPurchasePrice: canonicalDecimal(value.snapshot.printerPurchasePrice.toString()),
-      printerExpectedLifetimeHours: canonicalDecimal(value.snapshot.printerExpectedLifetimeHours.toString()),
-      printerHourlyRate:
-        exact?.lines.find((line) => line.category === 'printer')?.unitRate ??
-        canonicalDecimal(value.snapshot.printerHourlyRate.toString()),
-      printerPowerWatts: value.snapshot.printerPowerWatts,
-      printerCost: exact?.printerCost ?? canonicalDecimal(value.snapshot.printerCost.toString()),
-      componentCost: exact?.componentCost ?? canonicalDecimal(value.snapshot.componentCost.toString()),
-      filamentCost: exact?.filamentCost ?? canonicalDecimal(value.snapshot.filamentCost.toString()),
-      electricityCost: exact?.electricityCost ?? canonicalDecimal(value.snapshot.electricityCost.toString()),
-      totalCost: exact?.totalCost ?? canonicalDecimal(value.snapshot.totalCost.toString()),
-      currency: value.snapshot.currency,
-      formulaVersion: value.snapshot.formulaVersion,
-      calculatedAt: value.snapshot.calculatedAt.toISOString(),
-    },
+    snapshot: snapshotDto(value.snapshot),
+  };
+  return {
+    ...result,
+    parts: value.parts.map((part) => {
+      const snapshot = snapshotDto(part.snapshotJson ? JSON.parse(part.snapshotJson) : value.snapshot);
+      return {
+        id: part.id,
+        position: part.position,
+        printerId: part.printerId,
+        printer: { id: part.printer.id, name: part.printer.name },
+        totalDurationSeconds: part.totalDurationSeconds,
+        totalCost: snapshot?.totalCost ?? result.totalCost,
+        snapshot,
+        componentUsages: result.componentUsages.filter(
+          (_, index) => value.componentUsages[index]!.partId === part.id,
+        ),
+        filamentUsages: result.filamentUsages.filter(
+          (_, index) => value.filamentUsages[index]!.partId === part.id,
+        ),
+      };
+    }),
   };
 }
 
@@ -370,10 +406,106 @@ function persistenceData(input: PrintDraftInput, resolved: Awaited<ReturnType<ty
   };
 }
 
+async function resolvePrintParts(
+  transaction: Transaction,
+  input: PrintDraftInput,
+  existing?: PrintWithSnapshot,
+  allowedDisabledSeriesId?: string | null,
+  preview = false,
+) {
+  const parts: Array<{
+    id: string;
+    position: number;
+    printerId: string;
+    totalDurationSeconds: number;
+    snapshotJson: string;
+    data: ReturnType<typeof persistenceData>;
+  }> = [];
+  for (const [position, part] of input.parts.entries()) {
+    if (!preview && part.id && (!existing || !existing.parts.some((entry) => entry.id === part.id)))
+      apiError(422, 'STALE_PRINT', 'errors.stalePrint');
+    const id =
+      part.id ??
+      (input.parts.length === 1 && existing?.parts.length === 1 ? existing.parts[0]!.id : randomUUID());
+    if (parts.some((entry) => entry.id === id)) apiError(422, 'STALE_PRINT', 'errors.stalePrint');
+    const partInput = { ...input, ...part };
+    const resolved = await resolveCalculation(
+      transaction,
+      partInput,
+      existing?.seriesId ?? allowedDisabledSeriesId,
+    );
+    // Series may supply the parent customer; every part shares that same customer.
+    input.customerId = partInput.customerId;
+    const data = persistenceData(partInput, resolved);
+    parts.push({
+      id,
+      position,
+      printerId: part.printerId,
+      totalDurationSeconds: data.result.totalDurationSeconds,
+      snapshotJson: JSON.stringify(data.snapshot),
+      data,
+    });
+  }
+  const result = aggregatePrintPartCosts(
+    parts.map((part) => ({ id: part.id, costs: part.data.result })),
+    input.quantity,
+  );
+  const first = parts[0]!.data;
+  return {
+    parts,
+    result,
+    job: {
+      ...first.job,
+      customerId: input.customerId,
+      totalDurationSeconds: result.totalDurationSeconds,
+      totalCost: result.totalCost,
+      formulaVersion: result.calculationVersion,
+    },
+    snapshot: {
+      ...first.snapshot,
+      calculationJson: JSON.stringify(result),
+      costPerUnit: result.costPerUnit,
+      printerCost: result.printerCost,
+      componentCost: result.componentCost,
+      filamentCost: result.filamentCost,
+      electricityCost: result.electricityCost,
+      totalCost: result.totalCost,
+      formulaVersion: result.calculationVersion,
+    },
+  };
+}
+
+async function savePrintParts(
+  transaction: Transaction,
+  printJobId: string,
+  parts: Awaited<ReturnType<typeof resolvePrintParts>>['parts'],
+) {
+  await transaction.printComponentUsage.deleteMany({ where: { printJobId } });
+  await transaction.printFilamentUsage.deleteMany({ where: { printJobId } });
+  await transaction.printPart.deleteMany({
+    where: { printJobId, id: { notIn: parts.map((part) => part.id) } },
+  });
+  // Free the old positions before reordering retained parts.
+  await transaction.printPart.updateMany({ where: { printJobId }, data: { position: { increment: 1000 } } });
+  for (const { data, ...part } of parts) {
+    await transaction.printPart.upsert({
+      where: { id: part.id },
+      create: { ...part, printJobId },
+      update: part,
+    });
+    await transaction.printComponentUsage.createMany({
+      data: data.components.map((usage) => ({ ...usage, printJobId, partId: part.id })),
+    });
+    await transaction.printFilamentUsage.createMany({
+      data: data.filaments.map((usage) => ({ ...usage, printJobId, partId: part.id })),
+    });
+  }
+}
+
 export async function previewPrint(input: unknown) {
   const parsed = parseBody(printDraftSchema, input);
   return db.$transaction(async (transaction) => {
-    const { result } = await resolveCalculation(transaction, parsed, parsed.seriesId);
+    const { result } = await resolvePrintParts(transaction, parsed, undefined, parsed.seriesId, true);
     return {
       ...result,
       financials: calculatePrintFinancials(parsed.salesValue, result.totalCost, result.quantity),
@@ -396,19 +528,19 @@ export async function createPrint(input: unknown, links: { retryOfId?: string; r
       !(await transaction.printJob.findFirst({ where: { id: repeatOfId, archivedAt: null, status: 'DONE' } }))
     )
       apiError(409, 'REPEAT_NOT_ALLOWED', 'errors.repeatNotAllowed');
-    const data = persistenceData(parsed, await resolveCalculation(transaction, parsed));
+    const data = await resolvePrintParts(transaction, parsed);
+    const saved = await transaction.printJob.create({
+      data: {
+        ...data.job,
+        retryOfId,
+        repeatOfId,
+        snapshot: { create: data.snapshot },
+      },
+      include: printInclude,
+    });
+    await savePrintParts(transaction, saved.id, data.parts);
     return printDto(
-      await transaction.printJob.create({
-        data: {
-          ...data.job,
-          retryOfId,
-          repeatOfId,
-          componentUsages: { create: data.components },
-          filamentUsages: { create: data.filaments },
-          snapshot: { create: data.snapshot },
-        },
-        include: printInclude,
-      }),
+      await transaction.printJob.findUniqueOrThrow({ where: { id: saved.id }, include: printInclude }),
     );
   });
 }
@@ -416,48 +548,52 @@ export async function createPrint(input: unknown, links: { retryOfId?: string; r
 export async function updatePrint(id: string, input: unknown) {
   const parsed = parseBody(printDraftSchema, input);
   return db.$transaction(async (transaction) => {
-    const existing = await transaction.printJob.findUniqueOrThrow({ where: { id } });
+    const existing = await transaction.printJob.findUniqueOrThrow({ where: { id }, include: printInclude });
+    if (existing.parts.length > 1 && !(input && typeof input === 'object' && 'parts' in input))
+      apiError(422, 'STALE_PRINT', 'errors.stalePrint');
     if (existing.status !== 'DRAFT') apiError(409, 'PRINT_IMMUTABLE', 'errors.printImmutable');
-    const data = persistenceData(parsed, await resolveCalculation(transaction, parsed, existing.seriesId));
+    const data = await resolvePrintParts(transaction, parsed, existing);
+    const saved = await transaction.printJob.update({
+      where: { id },
+      data: {
+        ...data.job,
+        snapshot: { update: data.snapshot },
+      },
+      include: printInclude,
+    });
+    await savePrintParts(transaction, saved.id, data.parts);
     return printDto(
-      await transaction.printJob.update({
-        where: { id },
-        data: {
-          ...data.job,
-          componentUsages: { deleteMany: {}, create: data.components },
-          filamentUsages: { deleteMany: {}, create: data.filaments },
-          snapshot: { update: data.snapshot },
-        },
-        include: printInclude,
-      }),
+      await transaction.printJob.findUniqueOrThrow({ where: { id: saved.id }, include: printInclude }),
     );
   });
 }
 
 function intentFromPrint(value: PrintWithSnapshot): PrintDraftInput {
-  const buildPlate = value.componentUsages.find((entry) => entry.componentType === 'BUILD_PLATE');
-  if (!buildPlate) apiError(409, 'STALE_PRINT', 'errors.stalePrint');
-  return {
+  const dto = printDto(value);
+  return printDraftSchema.parse({
     name: value.name,
     quantity: value.quantity,
     salesValue: value.salesValue,
     seriesId: value.seriesId,
     customerId: value.customerId,
-    printerId: value.printerId,
-    buildPlateId: buildPlate.componentId,
-    hotends: value.componentUsages
-      .filter((entry) => entry.componentType === 'HOTEND')
-      .map((entry) => ({ componentId: entry.componentId, durationSeconds: entry.appliedDurationSeconds })),
-    otherComponentIds: value.componentUsages
-      .filter((entry) => entry.componentType === 'OTHER')
-      .map((entry) => entry.componentId),
-    filaments: printDto(value).filamentUsages.map((entry) => ({
-      filamentId: entry.filamentId,
-      spoolId: entry.spoolId ?? undefined,
-      usedGrams: entry.usedGrams.toString(),
-    })),
     notes: value.notes,
-  };
+    parts: dto.parts.map((part) => ({
+      id: part.id,
+      printerId: part.printerId,
+      buildPlateId: part.componentUsages.find((entry) => entry.type === 'BUILD_PLATE')?.componentId,
+      hotends: part.componentUsages
+        .filter((entry) => entry.type === 'HOTEND')
+        .map((entry) => ({ componentId: entry.componentId, durationSeconds: entry.appliedDurationSeconds })),
+      otherComponentIds: part.componentUsages
+        .filter((entry) => entry.type === 'OTHER')
+        .map((entry) => entry.componentId),
+      filaments: part.filamentUsages.map((entry) => ({
+        filamentId: entry.filamentId,
+        spoolId: entry.spoolId ?? undefined,
+        usedGrams: entry.usedGrams,
+      })),
+    })),
+  });
 }
 
 export async function completePrint(id: string) {
@@ -490,21 +626,21 @@ export async function updatePrintWorkflow(id: string, input: unknown) {
     }
 
     const draft = intentFromPrint(existing);
-    const data = persistenceData(draft, await resolveCalculation(transaction, draft, existing.seriesId));
+    const data = await resolvePrintParts(transaction, draft, existing);
+    const saved = await transaction.printJob.update({
+      where: { id },
+      data: {
+        ...data.job,
+        status,
+        ...(status === 'DONE' ? { completedAt: new Date() } : {}),
+        ...paymentData,
+        snapshot: { update: data.snapshot },
+      },
+      include: printInclude,
+    });
+    await savePrintParts(transaction, saved.id, data.parts);
     return printDto(
-      await transaction.printJob.update({
-        where: { id },
-        data: {
-          ...data.job,
-          status,
-          ...(status === 'DONE' ? { completedAt: new Date() } : {}),
-          ...paymentData,
-          componentUsages: { deleteMany: {}, create: data.components },
-          filamentUsages: { deleteMany: {}, create: data.filaments },
-          snapshot: { update: data.snapshot },
-        },
-        include: printInclude,
-      }),
+      await transaction.printJob.findUniqueOrThrow({ where: { id: saved.id }, include: printInclude }),
     );
   });
 }
@@ -512,6 +648,7 @@ export async function updatePrintWorkflow(id: string, input: unknown) {
 export async function duplicatePrint(id: string, relationship: 'copy' | 'retry' | 'repeat' = 'copy') {
   const existing = await db.printJob.findUniqueOrThrow({ where: { id }, include: printInclude });
   const input = intentFromPrint(existing);
+  input.parts = input.parts.map((part) => ({ ...part, id: undefined }));
   const features = await db.appSettings.findUniqueOrThrow({
     where: { id: 1 },
     select: { printSeriesEnabled: true },
@@ -565,7 +702,10 @@ export function compilePrintWhere(where: NonNullable<ParsedPrintList['where']>):
       const condition = outcomeCondition(values);
       return operator === 'in' ? condition : { NOT: condition };
     }
-    if ('printerId' in leaf) return { printerId: leaf.printerId };
+    if ('printerId' in leaf)
+      return 'in' in leaf.printerId
+        ? { parts: { some: { printerId: leaf.printerId } } }
+        : { parts: { none: { printerId: { in: leaf.printerId.notIn } } } };
     if ('customerId' in leaf) return { customerId: leaf.customerId };
     if ('seriesId' in leaf) return { seriesId: leaf.seriesId };
     if ('archived' in leaf) return { archivedAt: leaf.archived ? { not: null } : null };
@@ -591,7 +731,7 @@ function printFilter(input: ParsedPrintList) {
   if (!input.includeArchived) conditions.push({ archivedAt: null });
   if (input.status) conditions.push({ status: input.status });
   if (input.customerId) conditions.push({ customerId: input.customerId });
-  if (input.printerId) conditions.push({ printerId: input.printerId });
+  if (input.printerId) conditions.push({ parts: { some: { printerId: input.printerId } } });
   if (input.seriesId) conditions.push({ seriesId: input.seriesId });
   if (input.outcome) conditions.push(outcomeCondition([input.outcome]));
   if (input.search)
@@ -599,7 +739,7 @@ function printFilter(input: ParsedPrintList) {
       OR: [
         { name: { contains: input.search } },
         { customer: { name: { contains: input.search } } },
-        { printer: { name: { contains: input.search } } },
+        { parts: { some: { printer: { name: { contains: input.search } } } } },
       ],
     });
   if (input.dateFrom || input.dateTo)
@@ -643,7 +783,7 @@ export async function assertUnreferenced(
     count =
       (await db.printJob.count({ where: { customerId: id } })) +
       (await db.printSeries.count({ where: { customerId: id } }));
-  else if (resource === 'printers') count = await db.printJob.count({ where: { printerId: id } });
+  else if (resource === 'printers') count = await db.printPart.count({ where: { printerId: id } });
   else if (resource === 'manufacturers')
     count =
       (await db.printer.count({ where: { manufacturerId: id } })) +
@@ -661,6 +801,7 @@ export async function assertUnreferenced(
 export async function recordPrintOutcome(id: string, input: unknown, externalAlreadyTracked = false) {
   const parsed = parseBody(printOutcomeSchema, input);
   parsed.filaments.sort((a, b) => a.usageId.localeCompare(b.usageId));
+  parsed.parts?.sort((a, b) => a.partId.localeCompare(b.partId));
   return db.$transaction(async (transaction) => {
     const existing = await transaction.printJob.findUniqueOrThrow({ where: { id }, include: printInclude });
     if (existing.status !== 'DONE' || existing.archivedAt || !existing.snapshot)
@@ -677,7 +818,26 @@ export async function recordPrintOutcome(id: string, input: unknown, externalAlr
       parsed.filaments.some((line) => !source.filamentUsages.some((usage) => usage.id === line.usageId))
     )
       apiError(422, 'INVALID_ACTUAL_USAGE', 'errors.invalidActualUsage');
-    const costs = calculateActualPrintCost({ ...source, snapshot: source.snapshot! }, parsed);
+    if (
+      (source.parts.length > 1 && !parsed.parts) ||
+      (parsed.parts &&
+        (parsed.parts.length !== source.parts.length ||
+          parsed.parts.some((part) => !source.parts.some((item) => item.id === part.partId))))
+    )
+      apiError(422, 'INVALID_ACTUAL_USAGE', 'errors.invalidActualUsage');
+    const costs = calculateActualPrintPartsCost(
+      {
+        quantity: source.quantity,
+        currency: source.currency,
+        parts: source.parts.map((part) => ({
+          ...part,
+          quantity: source.quantity,
+          currency: source.currency,
+          snapshot: part.snapshot!,
+        })),
+      },
+      parsed,
+    );
     const stockEnabled = await spoolManagementEnabled(transaction);
     await transaction.printOutcome.create({
       data: {
@@ -720,6 +880,7 @@ export async function recordPrintOutcome(id: string, input: unknown, externalAlr
 export async function correctPrintOutcome(id: string, input: unknown) {
   const { operationKey, expectedRevision, ...parsed } = parseBody(printOutcomeCorrectionSchema, input);
   parsed.filaments.sort((a, b) => a.usageId.localeCompare(b.usageId));
+  parsed.parts?.sort((a, b) => a.partId.localeCompare(b.partId));
   return db.$transaction(async (transaction) => {
     const existing = await transaction.printJob.findUniqueOrThrow({ where: { id }, include: printInclude });
     if (existing.status !== 'DONE' || existing.archivedAt || !existing.outcome || !existing.snapshot)
@@ -745,7 +906,26 @@ export async function correctPrintOutcome(id: string, input: unknown) {
       parsed.filaments.some((line) => !source.filamentUsages.some((usage) => usage.id === line.usageId))
     )
       apiError(422, 'INVALID_ACTUAL_USAGE', 'errors.invalidActualUsage');
-    const costs = calculateActualPrintCost({ ...source, snapshot: source.snapshot! }, parsed);
+    if (
+      (source.parts.length > 1 && !parsed.parts) ||
+      (parsed.parts &&
+        (parsed.parts.length !== source.parts.length ||
+          parsed.parts.some((part) => !source.parts.some((item) => item.id === part.partId))))
+    )
+      apiError(422, 'INVALID_ACTUAL_USAGE', 'errors.invalidActualUsage');
+    const costs = calculateActualPrintPartsCost(
+      {
+        quantity: source.quantity,
+        currency: source.currency,
+        parts: source.parts.map((part) => ({
+          ...part,
+          quantity: source.quantity,
+          currency: source.currency,
+          snapshot: part.snapshot!,
+        })),
+      },
+      parsed,
+    );
     const stockEnabled = await spoolManagementEnabled(transaction);
     await transaction.printOutcomeCorrection.create({
       data: {

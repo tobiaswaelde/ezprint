@@ -256,7 +256,10 @@
     "formulaVersion": "Formelversion",
     "quantity": "Stückzahl",
     "quantityHelp": "1–1.000.000 identische Teile. Dauer und Material gelten für den gesamten Drucklauf.",
-    "costPerUnit": "Kosten pro Stück"
+    "costPerUnit": "Kosten pro Stück",
+    "part": "Teildruck {number}",
+    "addPart": "Teildruck hinzufügen",
+    "removePart": "Teildruck {number} entfernen"
   },
   "dashboard": {
     "period": "Berichtszeitraum",
@@ -444,7 +447,9 @@
   },
   "querrykit": {
     "table": {
-      "search": { "placeholder": "Drucke suchen" },
+      "search": {
+        "placeholder": "Drucke suchen"
+      },
       "sorting": {
         "title": "Sortieren",
         "field": "Feld auswählen",
@@ -469,7 +474,9 @@
         "center": "Lösen",
         "visibility": "Spaltensichtbarkeit wechseln"
       },
-      "pagination": { "summary": "{start}–{end} von {total}" }
+      "pagination": {
+        "summary": "{start}–{end} von {total}"
+      }
     }
   },
   "report": {

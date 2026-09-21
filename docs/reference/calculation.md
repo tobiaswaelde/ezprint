@@ -1,11 +1,11 @@
 ---
 title: Calculation rules
-description: Formula version 3, units, input boundaries, decimal precision, and a reproducible example.
+description: Formula version 4, units, input boundaries, decimal precision, and a reproducible example.
 ---
 
 # Calculation rules
 
-Formula version `3` uses `decimal.js` without intermediate rounding. API results are canonical decimal strings;
+Per-part calculations use the version `3` rules below. Version `4` sums these part results using `decimal.js` without intermediate rounding. API results are canonical decimal strings;
 only the UI formats currency for display. Let `t = seconds / 3600`, and convert watts to kilowatts by dividing by
 1,000.
 
@@ -50,3 +50,15 @@ Quantity is a whole number from 1 to 1,000,000 (default 1). Duration, material, 
 An outcome uses `actual-1` and only the rates stored when the print left Draft. Actual duration drives printer, build-plate, other-component, and electricity costs. Multiple hotends share actual duration in proportion to their planned durations. Each planned filament usage requires an actual weight, including zero. Zero-duration failures are allowed. Actual totals and unit costs are stored as canonical decimal strings in a separate immutable snapshot. Planned costs never change.
 
 Version 3 uses selected physical spool prices and preserves the complete calculation as decimal strings in JSON, avoiding SQLite numeric-affinity rounding of repeating rates. Earlier snapshots retain their original stored values. Actual-cost snapshots use the frozen rates of their source version.
+
+## Multiple parts
+
+Version `4` calculates each part independently from its own printer, build plate, hotends, components, and
+filament/spool sources. It sums decimal-string category totals and machine durations, then divides the combined
+cost by the parent quantity of complete products. Breakdown lines include a stable `partId`; the same source
+may appear in multiple parts at different frozen rates. Historical versions are read unchanged.
+
+Multipart actual snapshots use `actual-2`. Every part supplies its own actual duration; hotend proportions are
+calculated within that part. Actual material usage references the distinct usage IDs, even when parts consume
+the same spool. Stock consumption and corrections remain atomic for the complete print. Legacy one-part
+outcome requests continue using `actual-1` and require no new fields.

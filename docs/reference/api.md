@@ -148,3 +148,21 @@ All routes require authentication; mutating routes require same-origin requests.
 - `POST /api/integrations/bambubuddy`: `LINK_PRINTER` (`printerId`, nullable `remoteId`), `SYNC_PRINTER` (`printerId`), `MAP_TRAY` (`printerId`, `slot` as `ams:tray`, nullable `spoolId`), `ATTACH` (`printId`, `remoteLogId`), `SYNC_PRINT` (`printId`), or `IMPORT` (`printId`, `previewHash`, validated `outcome`). Only confirmed terminal records may import an outcome.
 
 Errors use `INTEGRATION_DISABLED`, `INTEGRATION_CONFIG`, `INTEGRATION_UNAVAILABLE`, `INTEGRATION_CONTRACT`, or `INTEGRATION_CONFLICT`; remote HTTP failures are classified without forwarding response bodies or connection details. Native mutations of externally owned stock return `STOCK_OWNED_EXTERNALLY`.
+
+## Print parts
+
+Draft creation, editing, and calculation accept `parts` (1–100 ordered objects). Each object contains
+`printerId`, `buildPlateId`, `hotends`, `otherComponentIds`, and `filaments` with the existing field semantics.
+When editing, retain each existing part's `id`; omit it for a newly added part. Shared `name`, `quantity`,
+`customerId`, `seriesId`, `salesValue`, and `notes` remain at the root. Legacy flat one-part requests remain
+accepted for one-part prints. Editing a multipart print requires an explicit `parts` array to prevent an older
+client from silently dropping parts. Explicit empty or invalid parts are rejected, even when flat fields are also present.
+
+Print responses include ordered `parts` with their own sources, usages, duration, total cost, and snapshot.
+Legacy singular `printer`/`printerId` fields describe the first part; parent cost, duration, and usage arrays
+cover the entire print. Printer filters and name search include every part, while lists and summaries count
+one parent print. The CSV `parts` column contains per-part printer, plate, duration, and total cost.
+
+For multipart outcomes/corrections, supply `parts: [{ partId, durationSeconds }]` for every part, plus the
+existing root `filaments` list covering every usage ID. Root `durationSeconds` must equal the part sum. Unknown,
+missing, or duplicate part IDs are rejected before stock changes. All parts share the root outcome status.

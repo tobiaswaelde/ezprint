@@ -1773,6 +1773,183 @@ try {
     'Later corrections do not partially book an outcome recorded while stock tracking was disabled.',
   );
 
+  // A complete product spanning two machines shares workflow, payment and quantity.
+  const partRequest = async (path: string, method: string, body?: unknown) => {
+    const result = await json(path, { method, ...(body ? { body: JSON.stringify(body) } : {}) }, cookie);
+    check(result.response.ok, `${method} ${path}: ${JSON.stringify(result.body)}`);
+    return result.body;
+  };
+  const partsMaker = await partRequest('/api/manufacturers', 'POST', { name: 'Parts maker' });
+  const partsFilament = await partRequest('/api/filaments', 'POST', {
+    manufacturerId: partsMaker.id,
+    material: 'PLA',
+    colorName: 'Teal',
+    colorHex: '#008080',
+    purchasePrice: '20',
+    netWeightGrams: '1000',
+  });
+  const partsSpool = (await partRequest(`/api/spools?filamentId=${partsFilament.id}`, 'GET')).items[0];
+  const partInputs = [];
+  for (const number of [1, 2]) {
+    const machine = await partRequest('/api/printers', 'POST', {
+      name: `Parts machine ${number}`,
+      manufacturerId: partsMaker.id,
+      purchasePrice: String(number * 1000),
+      expectedLifetimeHours: '1000',
+      averagePowerWatts: 0,
+    });
+    const partComponents = [];
+    for (const type of ['BUILD_PLATE', 'HOTEND'])
+      partComponents.push(
+        await partRequest('/api/components', 'POST', {
+          name: `${type} ${number}`,
+          type,
+          printerIds: [machine.id],
+          purchasePrice: '0',
+          expectedLifetimeHours: '1000',
+        }),
+      );
+    partInputs.push({
+      printerId: machine.id,
+      buildPlateId: partComponents[0].id,
+      hotends: [{ componentId: partComponents[1].id, durationSeconds: number * 3600 }],
+      filaments: [{ filamentId: partsFilament.id, spoolId: partsSpool.id, usedGrams: String(number * 10) }],
+    });
+  }
+  const multipartDraft = await partRequest('/api/prints', 'POST', {
+    name: 'Two-part product',
+    quantity: 2,
+    parts: partInputs,
+  });
+  check(
+    multipartDraft.parts.length === 2 &&
+      multipartDraft.totalCost === '5.6' &&
+      multipartDraft.costPerUnit === '2.8' &&
+      multipartDraft.totalDurationSeconds === 10800,
+    'Parts must sum machine time and exact costs, dividing by complete-product quantity.',
+  );
+  check(
+    multipartDraft.parts[0].filamentUsages[0].usedGrams === '10' &&
+      multipartDraft.parts[1].filamentUsages[0].usedGrams === '20',
+    'Repeated spool sources must keep distinct part quantities.',
+  );
+  check(multipartDraft.formulaVersion === '4', 'New part-aware snapshots must be versioned.');
+  const partSearch = await partRequest('/api/search?q=Parts%20machine%202', 'GET');
+  check(
+    partSearch.groups
+      .find((group: { type: string }) => group.type === 'prints')
+      .items.some((item: { id: string }) => item.id === multipartDraft.id),
+    'Global search must include every part printer.',
+  );
+  check(
+    (await json(`/api/printers/${partInputs[1]!.printerId}`, { method: 'DELETE' }, cookie)).response
+      .status === 409,
+    'A printer used by a later part must remain referenced.',
+  );
+  const legacyMultipartEdit = await json(
+    `/api/prints/${multipartDraft.id}`,
+    { method: 'PATCH', body: JSON.stringify({ name: 'Legacy client', ...partInputs[0] }) },
+    cookie,
+  );
+  check(
+    legacyMultipartEdit.response.status === 422 &&
+      (await partRequest(`/api/prints/${multipartDraft.id}`, 'GET')).parts.length === 2,
+    'Legacy flat edits must not silently remove later parts.',
+  );
+  const savedPartsPreview = await partRequest('/api/prints/calculate', 'POST', {
+    name: 'Saved multipart preview',
+    quantity: 2,
+    parts: partInputs.map((part, index) => ({ ...part, id: multipartDraft.parts[index].id })),
+  });
+  check(
+    savedPartsPreview.totalCost === multipartDraft.totalCost,
+    'Preview must accept existing part IDs without mutating the print.',
+  );
+  const secondMachinePrints = await partRequest(`/api/prints?printerId=${partInputs[1]!.printerId}`, 'GET');
+  check(
+    secondMachinePrints.items.some((item: { id: string }) => item.id === multipartDraft.id),
+    'Printer filtering must include later parts.',
+  );
+  const reordered = await partRequest(`/api/prints/${multipartDraft.id}`, 'PATCH', {
+    name: 'Two-part product',
+    quantity: 2,
+    parts: partInputs.map((part, index) => ({ ...part, id: multipartDraft.parts[index].id })).reverse(),
+  });
+  check(
+    reordered.parts[0].id === multipartDraft.parts[1].id && reordered.totalCost === '5.6',
+    'Reordering must preserve part identity and totals.',
+  );
+  const multipartDone = await partRequest(`/api/prints/${multipartDraft.id}/complete`, 'POST');
+  check(multipartDone.parts[0].id === reordered.parts[0].id, 'Freezing must retain part IDs.');
+  await partRequest(`/api/printers/${partInputs[0]!.printerId}`, 'PATCH', {
+    ...(await partRequest(`/api/printers/${partInputs[0]!.printerId}`, 'GET')),
+    name: 'Changed current machine',
+    purchasePrice: '9000',
+  });
+  const actualParts = multipartDone.parts.map((part: { id: string; totalDurationSeconds: number }) => ({
+    partId: part.id,
+    durationSeconds: part.totalDurationSeconds / 2,
+  }));
+  const actualFilaments = multipartDone.filamentUsages.map((usage: { id: string }, index: number) => ({
+    usageId: usage.id,
+    usedGrams: index === 0 ? '3' : '7',
+  }));
+  const actualBody = {
+    status: 'SUCCESS',
+    durationSeconds: 5400,
+    parts: actualParts,
+    filaments: actualFilaments,
+  };
+  const missingParts = await json(
+    `/api/prints/${multipartDraft.id}/outcome`,
+    { method: 'POST', body: JSON.stringify({ ...actualBody, parts: undefined }) },
+    cookie,
+  );
+  check(
+    missingParts.response.status === 422 &&
+      (await partRequest(`/api/spools/${partsSpool.id}`, 'GET')).remainingGrams === '1000',
+    'Missing part actuals must fail atomically without consuming stock.',
+  );
+  const actualMultipart = await partRequest(`/api/prints/${multipartDraft.id}/outcome`, 'POST', actualBody);
+  check(
+    actualMultipart.outcome.costs.totalCost === '2.7' &&
+      (await partRequest(`/api/spools/${partsSpool.id}`, 'GET')).remainingGrams === '990',
+    'Actual costs must use each machine duration and book each part material once.',
+  );
+  await partRequest(`/api/prints/${multipartDraft.id}/outcome`, 'POST', actualBody);
+  check(
+    (await partRequest(`/api/spools/${partsSpool.id}`, 'GET')).remainingGrams === '990',
+    'Repeated multipart outcome must be idempotent.',
+  );
+  const correctedMultipart = await partRequest(`/api/prints/${multipartDraft.id}/outcome/correct`, 'POST', {
+    ...actualBody,
+    expectedRevision: 1,
+    operationKey: '99999999-9999-4999-8999-999999999999',
+    note: 'Correct first part material',
+    filaments: actualFilaments.map((line: { usageId: string; usedGrams: string }, index: number) => ({
+      ...line,
+      usedGrams: index === 0 ? '4' : line.usedGrams,
+    })),
+  });
+  check(
+    correctedMultipart.outcome.costs.totalCost === '2.72' &&
+      (await partRequest(`/api/spools/${partsSpool.id}`, 'GET')).remainingGrams === '989',
+    'Multipart correction must book only material deltas.',
+  );
+  const repeatedMultipart = await partRequest(`/api/prints/${multipartDraft.id}/repeat`, 'POST');
+  check(
+    repeatedMultipart.parts.length === 2 &&
+      repeatedMultipart.parts[0].id !== multipartDone.parts[0].id &&
+      repeatedMultipart.quantity === 2,
+    'Repeating must copy every part with new IDs and preserve product quantity.',
+  );
+  const multipartReport = await partRequest(`/api/prints/${multipartDraft.id}/report`, 'GET');
+  check(
+    multipartReport.parts.length === 2 &&
+      multipartReport.parts.every((part: { snapshot: unknown }) => part.snapshot),
+    'Reports must carry every frozen part source.',
+  );
+
   execFileSync('pnpm', ['db:reset-password', 'integration@example.test', 'new-integration-password-456'], {
     env: environment,
     stdio: 'ignore',
