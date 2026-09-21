@@ -1,5 +1,18 @@
 # ezPrint
 
+## 0.9.0
+
+### Minor Changes
+
+- 0d0e1cc: Link Bambuddy runs to individual print parts and atomically import mixed remote and manual actuals with shared failure handling and per-part stock ownership.
+- 8cb255c: Create related records directly from selection fields and search paginated server results throughout forms and print filters.
+- 05fd402: Support ordered print parts with individual machines, build plates, materials, frozen costs, and actual durations under one shared print workflow.
+
+### Patch Changes
+
+- 7263b6d: Add next-status and mark-paid actions to print and customer-history tables.
+- 10ab075: Restore standard toolbar spacing and consistent navigation breadcrumbs on every management page.
+
 ## 0.8.8
 
 ### Patch Changes
