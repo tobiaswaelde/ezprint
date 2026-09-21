@@ -240,6 +240,7 @@
     "payment": "Zahlung",
     "paid": "Bezahlt",
     "unpaid": "Unbezahlt",
+    "advanceStatus": "Weiter zu {status}",
     "markPaid": "Als bezahlt markieren",
     "markUnpaid": "Als unbezahlt markieren",
     "updateStatus": "Status übernehmen",

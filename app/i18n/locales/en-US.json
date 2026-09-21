@@ -240,6 +240,7 @@
     "payment": "Payment",
     "paid": "Paid",
     "unpaid": "Unpaid",
+    "advanceStatus": "Advance to {status}",
     "markPaid": "Mark as paid",
     "markUnpaid": "Mark as unpaid",
     "updateStatus": "Update status",

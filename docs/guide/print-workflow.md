@@ -5,6 +5,11 @@ description: Create print drafts, move them through production and delivery, tra
 
 # Print workflow
 
+The print list and customer print history include row actions to advance a print to the next workflow status
+or mark it as paid. Leaving **Draft** requires confirmation because it freezes the cost snapshot. The next-status
+action disappears at **Done**, and the payment action disappears once paid. Archived prints cannot be changed
+from these row actions. Marking a print **Done** does not record a successful or failed outcome; record that separately.
+
 ## Prints page
 
 The `/prints` table shows name, customer, printer, total duration, total cost, workflow status, and payment status.
