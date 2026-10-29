@@ -85,7 +85,7 @@
     "@vitest/coverage-v8": "5.0.0",
     "@vue/test-utils": "2.4.6",
     "eslint": "10.10.0",
-    "happy-dom": "20.14.3",
+    "happy-dom": "21.0.4",
     "pdfjs-dist": "5.5.207",
     "prettier": "3.6.2",
     "prisma": "7.10.0",
