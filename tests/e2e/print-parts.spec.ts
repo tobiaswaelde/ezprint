@@ -17,7 +17,7 @@ test('creates and edits a print with separate build plates and material for each
     await page.getByRole('button', { name: 'Anmelden' }).click();
   }
   await expect(
-    page.getByRole('button', { name: /^(Globale Suche öffnen|Open global search)$/ }),
+    page.getByRole('button', { name: /^(Globale Suche öffnen|Open global search)/ }),
   ).toBeVisible();
   const preferences = await page.request.patch('/api/auth/preferences', {
     headers: { origin: new URL(page.url()).origin },

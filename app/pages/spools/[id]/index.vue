@@ -285,8 +285,10 @@
 </template>
 
 <script setup lang="ts">
+import type { z } from 'zod';
 import { stockMovementSchema, stockThresholdSchema } from '#shared/schemas/spools';
 import type { SpoolDetailDto, SpoolDto } from '#shared/types/spools';
+type StockMovementForm = z.input<typeof stockMovementSchema>;
 
 definePageMeta({ middleware: 'spool-management' });
 const { t } = useI18n();
@@ -303,15 +305,21 @@ const editing = ref(false);
 const page = ref(1);
 const nativeBalance = ref('');
 const currency = ref('EUR');
-const movement = reactive({ kind: 'CORRECTION', grams: '0', note: '', operationKey: crypto.randomUUID() });
-const movementOptions = computed(() =>
-  ['RECEIPT', 'CORRECTION'].map((value) => ({ value, label: t(`spool.${value}`) })),
-);
+const movement = reactive<StockMovementForm>({
+  kind: 'CORRECTION',
+  grams: '0',
+  note: '',
+  operationKey: crypto.randomUUID(),
+});
+const movementKinds: StockMovementForm['kind'][] = ['RECEIPT', 'CORRECTION'];
+const movementOptions = computed(() => movementKinds.map((value) => ({ value, label: t(`spool.${value}`) })));
 
 async function refresh() {
   try {
     spool.value = await $fetch<SpoolDetailDto>(`/api/spools/${id}`, { query: { page: page.value } });
-    stock.value = await $fetch(`/api/filaments/${spool.value.filamentId}/stock`);
+    stock.value = await $fetch<NonNullable<typeof stock.value>>(
+      `/api/filaments/${spool.value.filamentId}/stock`,
+    );
     error.value = '';
   } catch (reason) {
     error.value = reason instanceof Error ? reason.message : String(reason);

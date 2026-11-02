@@ -9,7 +9,7 @@
       <UDashboardNavbar :ui="{ left: 'flex-1' }">
         <template #left="{ sidebarCollapsed }">
           <UDashboardSidebarCollapse
-            :aria-label="t(sidebarCollapsed.value ? 'sidebar.expand' : 'sidebar.collapse')"
+            :aria-label="t(sidebarCollapsed?.value ? 'sidebar.expand' : 'sidebar.collapse')"
           />
           <LayoutGlobalSearch />
         </template>

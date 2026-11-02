@@ -1,4 +1,4 @@
-FROM node:26-alpine AS build
+FROM node:26.13.0-alpine AS build
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 RUN apk add --no-cache openssl && npm install --global corepack@0.36.0 && corepack enable
@@ -8,7 +8,7 @@ RUN pnpm install --frozen-lockfile \
   && pnpm build \
   && pnpm --filter @ezprint/prisma-runtime deploy --legacy --prod /migration
 
-FROM node:26-alpine AS runtime
+FROM node:26.13.0-alpine AS runtime
 ENV NODE_ENV=production
 ENV DATABASE_URL=file:/data/app.db
 WORKDIR /app

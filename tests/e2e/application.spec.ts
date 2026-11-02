@@ -138,7 +138,7 @@ test('setup, navigation, persistence, accessibility, and responsive shell', asyn
   await expect(printsToolbar.getByText('Drucke', { exact: true })).toBeVisible();
   await expectStandardToolbars(printsToolbar.locator(':scope > div > [data-slot="root"]'));
   const breadcrumbItems = printsToolbar
-    .getByRole('navigation', { name: 'breadcrumb' })
+    .getByRole('navigation', { name: /^(breadcrumb|Brotkrümelnavigation)$/i })
     .locator('[data-slot="item"]');
   await expect(breadcrumbItems).toHaveCount(2);
   await expect(breadcrumbItems.locator('[data-slot="linkLeadingIcon"]')).toHaveCount(2);
@@ -225,7 +225,7 @@ test('setup, navigation, persistence, accessibility, and responsive shell', asyn
   await page.getByRole('link', { name: 'Acme Updated', exact: true }).click();
   const customerDetailToolbar = page.locator('[data-table-toolbar]');
   const customerBreadcrumbItems = customerDetailToolbar
-    .getByRole('navigation', { name: 'breadcrumb' })
+    .getByRole('navigation', { name: /^(breadcrumb|Brotkrümelnavigation)$/i })
     .locator('[data-slot="item"]');
   await expect(customerBreadcrumbItems).toHaveCount(3);
   await expect(customerBreadcrumbItems.locator('[data-slot="linkLeadingIcon"]')).toHaveCount(3);
