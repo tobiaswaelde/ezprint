@@ -3,6 +3,8 @@ packages:
   - 'docker/prisma-runtime'
 
 minimumReleaseAgeExclude:
+  - '@querry-kit/nuxt-ui@3.3.10'
+  - '@querry-kit/nuxt@0.2.10'
   - '@node-rs/argon2-android-arm-eabi@2.2.1'
   - '@node-rs/argon2-android-arm64@2.2.1'
   - '@node-rs/argon2-darwin-arm64@2.2.1'
@@ -32,5 +34,14 @@ allowBuilds:
   unrs-resolver: true
   vue-demi: true
 overrides:
-  vite@>=5.0.0 <6.4.5: 6.4.5
+  vitepress>vite: 6.4.5
   esbuild@>=0.27.3 <0.28.1: 0.28.2
+
+# VitePress 1 uses DocSearch 3, whose supported React host remains React 18.
+# Isolate that host instead of binding it to Prisma's optional React 19 peers.
+packageExtensions:
+  '@docsearch/react@3.8.2':
+    dependencies:
+      react: 18.3.1
+      react-dom: 18.3.1
+      '@types/react': 18.3.31
