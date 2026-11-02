@@ -21,6 +21,8 @@ minimumReleaseAgeExclude:
   - happy-dom@20.14.3
   - '@querry-kit/nuxt-ui@3.3.2'
   - '@querry-kit/nuxt@0.2.4'
+  - '@querry-kit/nuxt@0.2.9'
+  - '@querry-kit/nuxt-ui@3.3.9'
 
 allowBuilds:
   '@prisma/engines': true
@@ -29,3 +31,6 @@ allowBuilds:
   prisma: true
   unrs-resolver: true
   vue-demi: true
+overrides:
+  vite@>=5.0.0 <6.4.5: 6.4.5
+  esbuild@>=0.27.3 <0.28.1: 0.28.2

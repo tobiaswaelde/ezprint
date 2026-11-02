@@ -56,7 +56,7 @@ export function useApplicationSettings() {
     try {
       Object.assign(
         form,
-        await $fetch('/api/settings', {
+        await $fetch<ApplicationSettingsDto>('/api/settings', {
           method: 'PATCH',
           body: {
             currency: form.currency,

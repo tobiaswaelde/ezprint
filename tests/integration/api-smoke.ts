@@ -1659,8 +1659,10 @@ try {
     previews: mixedPreviews,
     outcome: mixedOutcome,
   };
+  const mixedFirstImport = await bb(mixedImport);
+  const mixedImportRetry = await bb(mixedImport);
   check(
-    (await bb(mixedImport)).response.ok && (await bb(mixedImport)).response.ok,
+    mixedFirstImport.response.ok && mixedImportRetry.response.ok,
     'Mixed imported/manual parts save atomically and retry idempotently.',
   );
   const mixedOps = (await json('/api/integrations/spoolman', {}, cookie)).body.operations.filter(

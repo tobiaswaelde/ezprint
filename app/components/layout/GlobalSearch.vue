@@ -4,11 +4,11 @@
       color="neutral"
       variant="outline"
       class="h-9 w-9 justify-start bg-default sm:w-80"
-      :aria-label="t('search.open')"
+      :aria-label="`${t('search.open')}: ${t('search.placeholder')}`"
     >
       <UIcon name="i-tabler-command" class="size-4 shrink-0 text-primary" />
       <span class="hidden truncate text-muted sm:block">{{ t('search.placeholder') }}</span>
-      <UKbd class="ml-auto hidden sm:inline-flex">/</UKbd>
+      <UKbd class="ml-auto hidden sm:inline-flex" aria-hidden="true">/</UKbd>
     </UButton>
 
     <template #content>

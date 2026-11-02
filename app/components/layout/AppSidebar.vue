@@ -19,7 +19,7 @@
       >
         <UButton
           data-sidebar-footer-item
-          to="https://github.com/tobiaswaelde/ezprint"
+          :to="sourceUrl"
           target="_blank"
           color="neutral"
           variant="ghost"
@@ -32,7 +32,7 @@
         />
         <UButton
           data-sidebar-footer-item
-          to="https://tobiaswaelde.github.io/ezprint/"
+          :to="documentationUrl"
           target="_blank"
           color="neutral"
           variant="ghost"
@@ -48,7 +48,7 @@
           data-sidebar-footer-item
           type="button"
           class="flex w-full items-center justify-center gap-1.5 rounded-md px-1.5 py-1 font-mono text-xs text-muted transition-colors hover:bg-elevated hover:text-primary focus-visible:outline-2 focus-visible:outline-primary"
-          :aria-label="t('changelog.open')"
+          :aria-label="changelogLabel"
           @click="changelogOpen = true"
         >
           v{{ appVersion }}
@@ -63,10 +63,15 @@
 </template>
 
 <script setup lang="ts">
+const sourceUrl = 'https://github.com/tobiaswaelde/ezprint';
+const documentationUrl = 'https://tobiaswaelde.github.io/ezprint/';
 const { t } = useI18n();
 const appVersion = useRuntimeConfig().public.appVersion;
 const changelogOpen = useState('changelog-open', () => false);
 const { load: loadVersion, updateAvailable } = useVersionCheck();
+const changelogLabel = computed(
+  () => `${t('changelog.open')}: v${appVersion}${updateAvailable.value ? ` ${t('changelog.update')}` : ''}`,
+);
 const { enabled: spoolManagementEnabled } = useSpoolManagement();
 const { loaded: featuresLoaded, printSeriesEnabled } = useFeatures();
 const navigationItem = (path: string) => {

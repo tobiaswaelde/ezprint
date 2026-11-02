@@ -41,7 +41,7 @@
       <template v-if="!actual.link?.importedAt">
         <UFormField :label="t('outcome.duration')"
           ><UInput
-            v-model="actual.durationSeconds"
+            v-model.number="actual.durationSeconds"
             type="number"
             min="0"
             :disabled="recorded || actual.link?.log.duration_seconds != null"
@@ -108,7 +108,7 @@ async function action(action: 'ATTACH' | 'SYNC_PRINT', remoteLogId?: number) {
 }
 async function loadLogs() {
   await run(async () => {
-    logs.value = await $fetch('/api/integrations/bambubuddy', {
+    logs.value = await $fetch<{ items: BambuLog[]; total: number }>('/api/integrations/bambubuddy', {
       query: { view: 'logs', printerId: props.part.printerId, page: page.value },
     });
   });

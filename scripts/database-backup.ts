@@ -16,7 +16,7 @@ import {
 import { dirname, join, resolve } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
-import archiver from 'archiver';
+import { ZipArchive } from 'archiver';
 import Database from 'better-sqlite3';
 import unzipper from 'unzipper';
 export { databasePathFromUrl, ensureDatabaseFile } from './database-path.ts';
@@ -107,7 +107,7 @@ async function exportTable(database: Database.Database, name: BackupTableName, t
 async function writeZip(sourceDirectory: string, metadata: BackupMetadata, target: string) {
   await new Promise<void>((resolvePromise, reject) => {
     const output = createWriteStream(target, { flags: 'wx', mode: 0o600 });
-    const archive = archiver('zip', { zlib: { level: 9 } });
+    const archive = new ZipArchive({ zlib: { level: 9 } });
     output.on('close', resolvePromise);
     output.on('error', reject);
     archive.on('error', reject);

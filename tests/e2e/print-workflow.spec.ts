@@ -17,7 +17,7 @@ test('print and customer tables advance workflow and record payment', async ({ p
     await page.getByRole('button', { name: 'Anmelden' }).click();
   }
   await expect(
-    page.getByRole('button', { name: /^(Globale Suche öffnen|Open global search)$/ }),
+    page.getByRole('button', { name: /^(Globale Suche öffnen|Open global search)/ }),
   ).toBeVisible();
   const preferences = await page.request.patch('/api/auth/preferences', {
     headers: { origin: new URL(page.url()).origin },

@@ -99,3 +99,7 @@ Changesets, migrations, documentation standards, and the full container verifica
 
 Please report vulnerabilities privately through GitHub. Do not open a public issue for an unpatched vulnerability;
 follow the repository [security policy](./SECURITY.md) instead.
+
+## Development toolchain
+
+Use Node.js 26.13.0 LTS and the package manager pinned in `package.json`. Node-based application runtimes require Node.js 26. Builds use TypeScript 7; ESLint and compiler-API consumers use the TypeScript 6 compatibility package. Dependency overrides, where present, pin security fixes for transitive packages; validate tests and documentation builds when changing them.

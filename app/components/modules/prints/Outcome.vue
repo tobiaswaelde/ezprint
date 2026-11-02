@@ -113,8 +113,16 @@
 
 <script setup lang="ts">
 import Decimal from 'decimal.js';
+import type { z } from 'zod';
 import { createPrintOutcomeCorrectionSchema, createPrintOutcomeSchema } from '#shared/schemas/print-outcomes';
 import type { PrintJobDto } from '#shared/types/prints';
+type OutcomeForm = Omit<
+  z.input<ReturnType<typeof createPrintOutcomeCorrectionSchema>>,
+  'failureReason' | 'note'
+> & {
+  failureReason: string;
+  note: string;
+};
 const props = defineProps<{ job: PrintJobDto }>();
 const emit = defineEmits<{ recorded: [job: PrintJobDto] }>();
 const { t } = useI18n();
@@ -127,7 +135,7 @@ const usageName = (id: string) => {
 const error = ref('');
 const saving = ref(false);
 const correcting = ref(false);
-const form = reactive({
+const form = reactive<OutcomeForm>({
   expectedRevision: 1,
   operationKey: crypto.randomUUID(),
   status: 'SUCCESS',
@@ -140,9 +148,8 @@ const form = reactive({
   failureReason: '',
   note: '',
 });
-const statusOptions = computed(() =>
-  ['SUCCESS', 'FAILED'].map((value) => ({ value, label: t(`outcome.${value}`) })),
-);
+const statuses: OutcomeForm['status'][] = ['SUCCESS', 'FAILED'];
+const statusOptions = computed(() => statuses.map((value) => ({ value, label: t(`outcome.${value}`) })));
 const validationMessages = computed(() => ({
   failureReasonRequired: t('validation.outcomeFailureReasonRequired'),
   uniqueUsageRequired: t('validation.outcomeUniqueUsageRequired'),
