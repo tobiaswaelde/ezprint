@@ -34,6 +34,7 @@ allowBuilds:
   unrs-resolver: true
   vue-demi: true
 overrides:
+  archiver@8.0.0>readdir-glob: 4.0.0
   vitepress>vite: 6.4.5
   esbuild@>=0.27.3 <0.28.1: 0.28.2
 
