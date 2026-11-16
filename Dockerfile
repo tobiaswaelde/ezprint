@@ -6,13 +6,14 @@ WORKDIR /app
 COPY . .
 RUN pnpm install --frozen-lockfile \
   && pnpm build \
-  && pnpm --filter @ezprint/prisma-runtime deploy --legacy --prod /migration
+  && pnpm --filter @ezprint/prisma-runtime deploy --prod /migration
 
 FROM node:26.13.0-alpine AS runtime
 ENV NODE_ENV=production
 ENV DATABASE_URL=file:/data/app.db
 WORKDIR /app
-RUN apk add --no-cache openssl \
+RUN apk add --no-cache openssl "zlib>=1.4-r0" \
+  && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx \
   && addgroup --system --gid 1001 app \
   && adduser --system --disabled-password --uid 1001 --ingroup app --home /app app \
   && mkdir /data \
