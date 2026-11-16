@@ -1,5 +1,12 @@
 # ezPrint
 
+## 1.0.2
+
+### Patch Changes
+
+- a90e2fc: Update zlib and remove the unused npm CLI and its bundled dependencies from the production container.
+  Ship only the Prisma migration dependencies and use the patched glob matcher in backup archives.
+
 ## 1.0.1
 
 ### Patch Changes
